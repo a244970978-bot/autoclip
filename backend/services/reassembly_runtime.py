@@ -77,9 +77,11 @@ def local_model(log_path):
             else:
                 raise CaptionError('analysis_model_unavailable')
 
-            def call(system, payload):
+            def call(system, payload, *, schema=None, max_tokens=560):
+                response_format = {'type': 'json_object'} if schema is None else {
+                    'type': 'json_schema', 'json_schema': {'name': 'local_edit', 'schema': schema}}
                 data = request('POST', '/v1/chat/completions', {'model': 'local', 'stream': False,
-                    'temperature': .15, 'max_tokens': 560, 'response_format': {'type': 'json_object'},
+                    'temperature': .15, 'max_tokens': min(950, max(64, max_tokens)), 'response_format': response_format,
                     'messages': [{'role': 'system', 'content': system},
                                  {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]})
                 try:

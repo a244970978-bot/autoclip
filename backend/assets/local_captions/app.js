@@ -113,14 +113,17 @@ function optionalSeconds(value) {
 function drawChapters() {
   $('chapters').replaceChildren();
   if (!chapterState) return;
-  const {chapters, failed_windows: failed, window_count: windows} = chapterState;
+  const {chapters, failed_windows: failed, window_count: windows, recommended} = chapterState;
   $('smartStatus').textContent = `${chapters.length ? t('review_topics') + ' · ' + chapters.length : t('empty_topics')}${failed ? ` · ${t('partial_windows')} ${failed}/${windows}` : ''}`;
   const rows = new Map(current.cues.map((c, i) => [c.id, i]));
   for (const chapter of chapters) {
     const card = document.createElement('details'); card.className = 'chapter';
     const label = chapter.mode === 'hook_first' ? t('hook_first') : t('source_order');
-    card.append(text('summary', `${chapter.id} · ${chapter.title} · ${clockLabel(chapter.start)}–${clockLabel(chapter.end)} · ${label}`));
+    const picks = chapter.id === recommended ? ` · ${t('recommended_topic')}` : '';
+    card.append(text('summary', `${chapter.id} · ${chapter.title} · ${clockLabel(chapter.start)}–${clockLabel(chapter.end)} · ${label}${picks}`));
     card.append(text('p', `${chapter.seconds.toFixed(1)} s · ${chapter.scenes.length} ${t('cuts')} · ${t('pauses')} ${chapter.removed_silence.length} · ${t('omissions')} ${chapter.dropped.length}`));
+    if (chapter.editorial_review === 'passed') card.append(text('p', t('editorial_review_passed')));
+    else if (chapter.editorial_review === 'needs_review') card.append(text('p', t('editorial_review_needed')));
     if (chapter.warnings.length) card.append(text('p', t('review_context')));
     const list = document.createElement('ol');
     for (const [i, scene] of chapter.scenes.entries()) {
@@ -135,8 +138,9 @@ function drawChapters() {
       const detail = document.createElement('details');
       detail.append(text('summary', t('omissions')));
       for (const range of removed) {
+        const reason = ['filler','repetition','digression'].includes(range.reason) ? `${t('omit_' + range.reason)} · ` : '';
         detail.append(text('p', `${time(range.start)} → ${time(range.end)} s · ` + (range.first ?
-          current.cues.slice(rows.get(range.first), rows.get(range.last)+1).map(c => c.text).join(' ') : t('pauses'))));
+          reason + current.cues.slice(rows.get(range.first), rows.get(range.last)+1).map(c => c.text).join(' ') : t('pauses'))));
       }
       card.append(detail);
     }
@@ -173,16 +177,22 @@ async function playDraft() {
   video.currentTime = localDraft.scenes[0].start;
   await video.play();
 }
+function drawAnalysisProgress(progress) {
+  const phases = {audio:'analysis_audio', scan:'analysis_topics', topics:'analysis_topics', body:'analysis_body', hook:'analysis_hook', review:'analysis_review'};
+  const phase = Object.hasOwn(phases, progress?.phase) ? phases[progress.phase] : 'analysis_running';
+  const hasCount = Number.isInteger(progress?.done) && Number.isInteger(progress?.total) && progress.total > 0;
+  const label = `${t(phase)}${hasCount ? ` · ${progress.done}/${progress.total}` : ''}`;
+  if ($('smartStatus').textContent !== label) $('smartStatus').textContent = label;
+}
 function updateJobs() {
   const active = current.jobs.find(j => ['queued', 'running'].includes(j.status));
   $('settings').disabled = !!active || !current.cues.length;
   $('cancel').hidden = !active; $('retry').hidden = !!active || current.cues.length > 0;
-  $('status').textContent = active ? `${active.kind === 'render' ? t('正在渲染') : t('字幕')}…` : (current.jobs.at(-1)?.error ? friendly(current.jobs.at(-1).error) : t('完成'));
+  $('status').textContent = active ? `${t(active.kind === 'render' ? '正在渲染' : active.kind === 'analyze' ? 'analysis_running' : '字幕')}…` : (current.jobs.at(-1)?.error ? friendly(current.jobs.at(-1).error) : t('完成'));
   $('editTab').disabled = !current.cues.length || !!active;
   $('analyze').disabled = !current.cues.length || !!active;
   if (active?.kind === 'analyze') {
-    const p = active.progress;
-    $('smartStatus').textContent = `${t('analysis_running')}${p?.total ? ` · ${p.done}/${p.total}` : ''}`;
+    drawAnalysisProgress(active.progress);
   } else {
     refreshChapters().catch(fail);
     const last = current.jobs.at(-1);
@@ -238,7 +248,7 @@ async function start() {
   messages = await (await fetch('/assets/locales.json')).json();
   for (const code of Object.keys(messages)) { const option = text('option', code); option.value = code; $('language').append(option); }
   if (!messages[language]) language = 'zh'; $('language').value = language; translate();
-  $('language').onchange = () => { language = $('language').value; localStorage.setItem('autoclip-caption-language', language); translate(); if (current) { drawScenes(); drawChapters(); } };
+  $('language').onchange = () => { language = $('language').value; localStorage.setItem('autoclip-caption-language', language); translate(); if (current) { drawScenes(); drawChapters(); updateJobs(); } };
   $('cancel').hidden = true; $('retry').hidden = true;
   $('projects').onchange = guarded(async () => { if (mayLeave()) await loadProject($('projects').value); else $('projects').value = current?.id || ''; });
   $('file').onchange = () => importFile($('file').files[0]);

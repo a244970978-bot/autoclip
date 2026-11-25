@@ -11,6 +11,8 @@ from backend.services.local_captions import CaptionError, atomic, digest, srt_bo
 
 
 def main():
+    # Whisper's bundled VAD and the pause detector both use local ONNX Runtime.
+    os.environ['ORT_DISABLE_TELEMETRY'] = '1'
     task_path = Path(sys.argv[1]).resolve()
     parent = int(sys.argv[2])
     started = time.monotonic()
@@ -60,14 +62,16 @@ def main():
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             from backend.core import project_cancellation
-            from backend.services.reassembly_runtime import detect_silence, local_model
-            from backend.services.local_reassembly import analyze
-            def progress(done, total):
-                atomic(task_path.parent / 'progress.json', {'done': done, 'total': total, 'phase': 'analysis'})
+            from backend.services.editorial_audio import measure_pauses
+            from backend.services.editorial_recut import propose
+            from backend.services.reassembly_runtime import local_model
+            def progress(done, total, phase):
+                atomic(task_path.parent / 'progress.json', {'done': done, 'total': total, 'phase': phase})
+            progress(0, 1, 'audio')
             with project_cancellation.bind(data['id']):
-                silence = detect_silence(video, task['scope'], project_cancellation.run)
+                silence = measure_pauses(video, task['scope'], project_cancellation.run)
             with local_model(task_path.parent / 'model-runtime.log') as call:
-                chapters = analyze(data['cues'], task['scope'], data['info']['duration'], silence, call, progress)
+                chapters = propose(data['cues'], task['scope'], data['info']['duration'], silence, call, progress)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)
