@@ -47,7 +47,7 @@ ZIP CRC 校验通过，各仅含一个预期的非符号链接文件；解压目
 | ffprobe | 66,158,064 | `2738aa46a7f9acbc8ab09a6715554c90f7de603171ac403726765685df6a0059` |
 
 - 两者 `codesign --verify --strict --verbose=2` 均退出 0；显示 `Developer ID Application: Martin Riedl (KU3N25YGLU)`，TeamIdentifier 相同。此处是实际签名完整性/身份显示检查，不冒称已作独立 Gatekeeper/notarization 验收或证明所有源码安全。
-- 在禁网、隔离 HOME、禁止读取用户目录和钥匙串的 sandbox 内，两个工具的 `-version`、`-buildconf`、`-L` 均退出 0，实际版本均为 9.0.2。
+- 在禁网、隔离 HOME、拒绝项目目录以外的本用户 HOME 内容及系统钥匙串读取的 sandbox 内，两个工具的 `-version`、`-buildconf`、`-L` 均退出 0，实际版本均为 9.0.2。
 - 配置有 `--enable-gpl --enable-version3`、无 `--enable-nonfree`；运行许可文本为 **GPL-3.0-or-later**，不是 MIT。分发前仍须完成静态第三方库 notices、对应源码/构建与 GPL 义务审核，当前不制作发行包。[FFmpeg 许可说明](https://ffmpeg.org/legal.html)
 - 实际可用过滤器包括 subtitles、concat、scale、pad、aresample，编码器包括 libx264、aac。列出功能不等于所有格式/硬件加速已验证。
 - 首次准备脚本错误使用系统 Python 3.9 不具备的 `hashlib.file_digest`，在执行二进制前失败；改用已批准的独立 Python 3.13 后完成全部检查，约 14.258 秒。没有因此新增安装依赖、跳过校验或关闭 Gatekeeper。
