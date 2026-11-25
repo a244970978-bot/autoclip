@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--server-pid', type=int, required=True)
+    parser.add_argument('--analysis', action='store_true')
     args = parser.parse_args()
     root = args.data_dir.resolve()
     running = True
@@ -31,11 +32,15 @@ def main():
             return False
     try:
         while running and parent_alive():
-            for marker in root.glob('projects/*/metadata/job-*/dispatch.ready'):
+            channel = 'ai-ready' if args.analysis else 'ready'
+            for marker in root.glob('projects/*/metadata/job-*/dispatch.' + channel):
                 if not marker.resolve().is_relative_to(root) or marker.is_symlink():
                     continue
                 folder = marker.parent
-                marker.rename(folder / 'dispatch.claimed')
+                try:
+                    marker.rename(folder / 'dispatch.claimed')
+                except FileNotFoundError:
+                    continue
                 with (folder / 'worker.stdout').open('wb') as out, (folder / 'worker.stderr').open('wb') as err:
                     proc = subprocess.Popen([sys.executable, '-B', '-m', 'backend.local_captions_worker',
                         str(folder / 'task.json'), str(os.getpid())], stdout=out, stderr=err, start_new_session=True)

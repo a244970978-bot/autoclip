@@ -19,7 +19,8 @@ def main():
     result = {'status': 'failed', 'error': 'worker_failed'}
 
     def no_connections(event, args):
-        if event == 'socket.connect':
+        if event == 'socket.connect' and not (job['kind'] == 'analyze' and
+                isinstance(args[1], str) and args[1] == os.environ.get('AUTOCLIP_MODEL_SOCKET')):
             raise PermissionError('This worker is offline; no cloud fallback or downloads')
     sys.addaudithook(no_connections)
 
@@ -55,6 +56,21 @@ def main():
             with reporting(lambda value: atomic(task_path.parent / 'progress.json', {'fraction': value})):
                 generate_subtitle_for_video(video, output_path=subtitle, method='whisper_local', model='small',
                                            language='zh', enable_fallback=False, enable_speaker_diarization=False)
+        elif job['kind'] == 'analyze':
+            if digest(subtitle) != data['subtitle_sha256']:
+                raise CaptionError('subtitles_changed')
+            from backend.core import project_cancellation
+            from backend.services.reassembly_runtime import detect_silence, local_model
+            from backend.services.local_reassembly import analyze
+            def progress(done, total):
+                atomic(task_path.parent / 'progress.json', {'done': done, 'total': total, 'phase': 'analysis'})
+            with project_cancellation.bind(data['id']):
+                silence = detect_silence(video, task['scope'], project_cancellation.run)
+            with local_model(task_path.parent / 'model-runtime.log') as call:
+                chapters = analyze(data['cues'], task['scope'], data['info']['duration'], silence, call, progress)
+            if digest(subtitle) != data['subtitle_sha256']:
+                raise CaptionError('subtitles_changed')
+            atomic(task_path.parent / 'chapters.json', chapters)
         else:
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')

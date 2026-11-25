@@ -9,5 +9,9 @@
   "ffmpeg": {
     "ffmpeg": "2e11c6f90993cdb79fff84d3f90044d28316b310e75b3e030cfc9a54f2c9d384",
     "ffprobe": "2738aa46a7f9acbc8ab09a6715554c90f7de603171ac403726765685df6a0059"
+  },
+  "reassembly": {
+    "runner": "b347631ed8a174ba13e00f9f4e92e35a1d1d84a9f41d8b29dc127038348a2df4",
+    "model": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785"
   }
 }

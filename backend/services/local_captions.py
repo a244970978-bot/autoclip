@@ -1,6 +1,6 @@
 """Small local caption workspace; reuses AutoClip's ASR, timeline and Studio renderer.
 
-No providers, downloads, diagnostics queue or legacy web application are started here.
+No cloud providers, downloads, diagnostics queue or legacy web application are started here.
 Persistent media and transcripts belong in an ignored, isolated data directory.
 """
 from __future__ import annotations
@@ -117,7 +117,8 @@ class CaptionWorkspace:
             for job in data.get('jobs', []):
                 if job['status'] in ('queued', 'running'):
                     job.update(status='failed', error='interrupted')
-                    ready = path.parent / 'metadata' / ('job-' + job['id']) / 'dispatch.ready'
+                    suffix = 'ai-ready' if job['kind'] == 'analyze' else 'ready'
+                    ready = path.parent / 'metadata' / ('job-' + job['id']) / ('dispatch.' + suffix)
                     if ready.exists():
                         ready.rename(ready.with_suffix('.interrupted'))
             atomic(path, data)
@@ -272,7 +273,7 @@ class CaptionWorkspace:
             self.put(data)
             return data
 
-    def start_job(self, pid, kind, *, plan_hash=None, approved=False):
+    def start_job(self, pid, kind, *, plan_hash=None, approved=False, scope=None):
         with self.lock:
             self.idle()
             data = self.load(pid)
@@ -280,14 +281,22 @@ class CaptionWorkspace:
                 raise CaptionError('approval_required')
             if kind == 'render' and data['status'] != 'ready':
                 raise CaptionError('invalid_subtitles')
-            if kind not in ('render', 'transcribe'):
+            if kind == 'analyze':
+                if data['status'] != 'ready' or not data['cues']:
+                    raise CaptionError('analysis_no_cues')
+                duration = data['info']['duration']
+                a, b = (0 if scope[0] is None else scope[0], duration if scope[1] is None else scope[1])
+                if not 0 <= a < b <= duration or not 18 <= b-a <= 3*3600:
+                    raise CaptionError('analysis_range')
+                scope = (a,b)
+            if kind not in ('render', 'transcribe', 'analyze'):
                 raise CaptionError('invalid_job')
             track = caption_track(data['cues'], data['draft'], data['info']) if kind == 'render' else None
             self.space(max(256 * 1024**2, int(track['duration'] * 8 * 1024**2)) if track else 512 * 1024**2)
             job = {'id': uuid.uuid4().hex, 'kind': kind, 'status': 'queued', 'created': time.time()}
             path = self.path(pid) / 'metadata' / ('job-' + job['id'])
             path.mkdir(parents=True)
-            atomic(path / 'task.json', {'project': data, 'job': job, 'track': track})
+            atomic(path / 'task.json', {'project': data, 'job': job, 'track': track, 'scope': scope})
             data['jobs'].append(job)
             self.put(data)
             active = {'pid': pid, 'job': job['id'], 'process': None, 'cancel': threading.Event()}
@@ -315,7 +324,7 @@ class CaptionWorkspace:
                 if self.profile:
                     # macOS refuses sandbox_apply from an already sandboxed parent.
                     # A separately launched deny-network broker consumes this local file queue.
-                    (path / 'dispatch.ready').touch(exist_ok=False)
+                    (path / ('dispatch.ai-ready' if job['kind'] == 'analyze' else 'dispatch.ready')).touch(exist_ok=False)
                 else:
                     with (path / 'worker.stdout').open('wb') as out, (path / 'worker.stderr').open('wb') as err:
                         proc = subprocess.Popen(cmd, stdout=out, stderr=err, start_new_session=True)
@@ -343,6 +352,8 @@ class CaptionWorkspace:
                     raise CaptionError(result.get('error', 'worker_failed'))
                 if job['kind'] == 'transcribe':
                     self.finish_transcript(data, self.path(pid) / 'raw/input.srt')
+                if job['kind'] == 'analyze':
+                    job['subtitle_sha256'] = data['subtitle_sha256']
                 job.update(status='completed', seconds=result['seconds'])
                 self.put(data)
         except BaseException as error:
@@ -387,9 +398,19 @@ class CaptionWorkspace:
         with self.lock:
             self.closing = True
             a = self.active
-        if a:
-            self.cancel(a['pid'], a['job'])
+            if a:
+                self.cancel(a['pid'], a['job'])
         self.pool.shutdown(wait=True, cancel_futures=False)
+
+    def analysis(self, pid, jid=None):
+        data = self.load(pid)
+        match = next((j for j in reversed(data['jobs']) if j['kind'] == 'analyze'
+                      and j['status'] == 'completed' and (jid is None or j['id'] == jid)
+                      and j.get('subtitle_sha256') == data.get('subtitle_sha256')), None)
+        if not match:
+            return None
+        path = self.path(pid) / 'metadata' / ('job-' + match['id']) / 'chapters.json'
+        return {'job_id': match['id'], **json.loads(path.read_text())}
 
     def download(self, pid, jid, kind):
         data = self.load(pid)

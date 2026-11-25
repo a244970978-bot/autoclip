@@ -2,6 +2,7 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 import argparse
+import json
 import os
 import tempfile
 
@@ -34,6 +35,12 @@ class Approval(BaseModel):
     model_config = ConfigDict(extra='forbid')
     plan_hash: str = Field(pattern='^[a-f0-9]{64}$')
     approved: bool = False
+
+
+class AnalysisScope(BaseModel):
+    model_config = ConfigDict(extra='forbid', allow_inf_nan=False)
+    start: float | None = None
+    end: float | None = None
 
 
 def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
@@ -112,7 +119,20 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
         data = workspace.load(pid)
         if data['cues']:
             data['track'] = caption_track(data['cues'], data['draft'], data['info'])
+        active = next((j for j in reversed(data['jobs']) if j['status'] in ('queued','running')), None)
+        if active:
+            progress = workspace.path(pid) / 'metadata' / ('job-' + active['id']) / 'progress.json'
+            if progress.is_file():
+                active['progress'] = json.loads(progress.read_text())
         return data
+
+    @app.post('/api/projects/{pid}/analysis')
+    def analyze(pid: str, scope: AnalysisScope):
+        return workspace.start_job(pid, 'analyze', scope=(scope.start, scope.end))
+
+    @app.get('/api/projects/{pid}/analysis')
+    def analysis(pid: str):
+        return {'analysis': workspace.analysis(pid)}
 
     @app.get('/api/projects/{pid}/source')
     def source(pid: str):

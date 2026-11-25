@@ -10,6 +10,7 @@ import shlex
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,11 +59,19 @@ def main():
                 time.sleep(.1)
             else:
                 raise RuntimeError('Owned workspace did not stop; no unrelated process was killed')
-        broker = state.get('broker_pid')
-        if broker:
+        for broker in filter(None, (state.get('broker_pid'), state.get('analysis_pid'))):
             command = subprocess.run(['/bin/ps', '-p', str(broker), '-o', 'command='], capture_output=True, text=True).stdout
             if 'backend.local_captions_broker' in command and '--data-dir ' + str(data) + ' ' in command:
-                os.kill(broker, signal.SIGTERM)
+                try:
+                    os.kill(broker, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+        directory = state.get('socket_directory')
+        if directory and Path(directory).parent == Path('/private/tmp') and Path(directory).name.startswith('ac-model-'):
+            try:
+                Path(directory).rmdir()
+            except OSError:
+                pass  # Don't remove live sockets/credentials or unrelated files.
         statefile.write_text(json.dumps({**state, 'status': 'stopped'}) + '\n')
         print('stopped')
         return 0
@@ -157,7 +166,19 @@ def main():
     if broker.poll() is not None:
         os.kill(proc.pid, signal.SIGTERM)
         raise RuntimeError('Offline broker failed to start')
-    state = {'pid': proc.pid, 'broker_pid': broker.pid, 'url': f'http://127.0.0.1:{args.port}', 'status': 'running'}
+    socket_dir = Path(tempfile.mkdtemp(prefix='ac-model-', dir='/private/tmp'))
+    channel = socket_dir / 'model.sock'
+    ai_profile = runtime / 'analysis.sb'
+    ai_profile.write_text(base + f'(allow network-bind network-inbound (local unix-socket (literal {q(channel)})))\n'
+                          f'(allow network-outbound (remote unix-socket (literal {q(channel)})))\n')
+    ai_env = {**env, 'AUTOCLIP_MODEL_SOCKET': str(channel),
+              'AUTOCLIP_LLAMA_SERVER': str(ROOT / '.local/prepared/ollama-0.40.18/llama-server'),
+              'AUTOCLIP_QWEN_MODEL': str(ROOT / '.local/downloads/qwen/Qwen3-8B-Q4_K_M.gguf')}
+    with (runtime / 'analysis-broker.log').open('ab') as log:
+        analysis = subprocess.Popen([*broker_cmd[:2], str(ai_profile), *broker_cmd[3:], '--analysis'],
+                                    cwd=ROOT, env=ai_env, stdout=log, stderr=log, start_new_session=True)
+    state = {'pid': proc.pid, 'broker_pid': broker.pid, 'analysis_pid': analysis.pid,
+             'socket_directory': str(socket_dir), 'url': f'http://127.0.0.1:{args.port}', 'status': 'running'}
     statefile.write_text(json.dumps(state) + '\n')
     print(state['url'])
     return 0
