@@ -23,13 +23,14 @@
 - Qwen revision `7c41481f57cb95916b40956ab2f0b139b296d974`；`Qwen3-8B-Q4_K_M.gguf` SHA256 `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`。
 - 只允许上述官方托管/资产 CDN；不自动使用 hf-mirror、ghproxy、清华或其他镜像。不可达/来源改变则记录并再确认。
 
-**A 已准备不意味着应用已能运行。** 它只准备解释器/模型服务/权重；下列 B 缺项仍未获下载/安装批准，不能自动扩大安装范围。Qwen 的自制文本本机接口试跑已通过，但没有完成 AutoClip 的真实转写、素材分析或出片。
+**A 已准备不意味着应用已能运行。** 它只准备解释器/模型服务/权重；后续 B 的批准/实际结果见下表及 [B 批回执](PYTHON_PREPARATION_RECEIPT_2026-11-25.md)，不能自动扩大安装范围。本地 ASR 合成语音和原版模型适配器组件测试已通过，但没有完成授权真实视频的整条应用闭环。
 
-## B. 尚不能直接安装的缺项
+## B. 后续准备状态与仍未批准的缺项
 
 | 项目 | 现有证据 / 下一步 |
 | --- | --- |
-| Python 运行依赖 + faster-whisper 运行时 | 已完成元数据级候选预览：127 个文件、100,952,102 bytes，均有声明许可和 SHA256，来源 PyPI / files.pythonhosted.org；[B 批提案](PYTHON_DEPENDENCIES_PROPOSAL_2026-11-25.md) 与逐文件 JSON 已列出。**未批准、未下载、未安装**；不是实际 pip/原生库兼容性证明。注意 `pysrt==1.1.2` 为 GPLv3 且仅 sdist，另含 GPL/MPL 传递依赖；先核包内许可/源码，再禁网构建，不自动下载额外构建依赖。 |
+| Python 运行依赖 + faster-whisper 运行时 | **已单独获批、127 文件已全部下载/校验并禁网安装**，100,952,102 bytes，来源仍为 PyPI/files.pythonhosted.org。[冻结提案](PYTHON_DEPENDENCIES_PROPOSAL_2026-11-25.md) 与 JSON 保留原文件列表。原版 CLI help、真实本地 ASR 合成语音和原版适配器→本机模型通过组件测试；包内许可缺口及未完成验收见 B 回执，不宣称已能出片。 |
+| 新发现的 chardet 缺项 | `pysrt` 的实际源码/构建元数据要求它，原元数据预览漏列；当前 `pip check` 退出 1。额外候选 chardet 5.2.0，纯 Python wheel 199,385 bytes、LGPL 声明、PyPI/files.pythonhosted.org，已提出单项确认，**未批准、未下载/安装**；不得自动补齐。 |
 | FFmpeg + ffprobe arm64 | 原项目 pin 9.0.2 第三方站 `ffmpeg.martin-riedl.de` 的两个固定地址 HEAD 返回 403，大小和构建授权未核实，不在 A 内。可核对用户已有有权使用的二进制；否则对替代 arm64 发布物重新核对来源/大小/哈希/编译选项/许可证后申请下载。HEAD 失败不等于 GET 必然失败；本次没有下载来绕过确认。 |
 | Node/npm/前端依赖 | UI 开发前再准备；源码 desktop pin 为 Node 20.20.2，而诊断测试另用 22.22.0，不能混为同一套环境。lock 479 项，含缺授权记录及 FSL Sentry CLI；无须为了首条本地 CLI 测试立即安装整个 UI/诊断服务工具链。 |
 | Rust/Tauri | 当前阶段不构建桌面发行包，不下载。现有 Xcode CLT 不等于 Rust 已安装。 |
@@ -41,5 +42,5 @@
 - 模型/依赖准备完成后才对应用及模型服务进行完整出站限制测试；不能用环境开关或供应商隐私声明替代抓包/断网验证。[Ollama 禁云说明](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features)
 - 不上传用户真实视频供 Codex 分析；后续如确有需要，必须另说清将发给模型的具体材料并获准。开发者可先用自制合成文字做协议测试，但它不替代真实 ASR/成片验收。
 - 全部下载/运行数据留在忽略目录，记录来源、哈希、耗时、失败原因；失败不静默换云/换源。未批准的部分继续只核查。
-- 本次只在 `.local/prepared/` 解压已批准的 Python/Ollama，并临时运行隔离测试；没有系统安装、全局 PATH/pip 修改、登录或后台服务注册。临时模型服务已停止；清理边界和实际测试记录见准备记录，不删除原素材、其他项目环境、已有模型或钥匙串。
+- A 只在 `.local/prepared/` 解压 Python/Ollama，B 在 `.local/environments/` 建独立 venv 并禁网安装；没有系统安装、全局 PATH/pip 修改、登录或后台服务注册。临时模型服务已停止；清理边界和实际测试记录见 A/B 回执，不删除原素材、其他项目环境、已有模型或钥匙串。
 - 不购买订阅、不注册付费 API/云资源；无云调用费不等于没有本机硬件、电力、空间和维护成本。
