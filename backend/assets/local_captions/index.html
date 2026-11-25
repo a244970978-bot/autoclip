@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoClip · 字幕</title><link rel="stylesheet" href="/assets/style.css"><script src="/assets/app.js" defer></script></head>
+<body>
+<header><a class="brand" href="/">AutoClip <span data-t="本地同步字幕"></span></a><nav><button id="previewTab" data-t="预览"></button><button id="editTab" data-t="校对字幕"></button></nav><select id="language" aria-label="Language"></select></header>
+<main>
+<p class="privacy" data-t="local_notice"></p><p id="error" class="error" role="alert"></p>
+<div id="importer" class="importer"><select id="projects" aria-label="Project"></select><label class="add" title="MP4 / H.264 / AAC">＋<input id="file" type="file" accept="video/mp4,.mp4"></label><span>MP4 · H.264 / AAC</span><span id="mediaInfo"></span><span id="status" role="status"></span><button id="cancel" data-t="取消"></button><button id="retry" data-t="重试"></button></div>
+<section id="workspace" hidden>
+<div class="work-grid"><section class="viewer"><div id="stage" class="stage"><video id="video" controls playsinline preload="metadata"></video><div id="caption" class="caption" aria-live="off"></div></div><div class="toolbar"><button id="play" data-t="预览"></button><button id="original" data-t="原片"></button><span id="clock"></span></div><div id="exports"></div></section>
+<section class="plan"><fieldset id="settings"><h2 data-t="调整镜头"></h2><div id="scenes"></div><button id="addScene" data-t="追加镜头"></button><div class="options"><label><span data-t="原画幅"></span><select id="aspect"><option value="original" data-t="原画幅"></option><option value="portrait">9:16 · fit</option></select></label><label><input id="subtitles" type="checkbox" checked><span data-t="字幕压进画面"></span></label><label><span data-t="字幕样式"></span><select id="style"><option value="clean">Clean</option><option value="box">Box</option><option value="bold">Bold</option><option value="accent">Accent</option></select></label></div><div class="toolbar"><button id="save" data-t="保存草稿"></button><button class="primary" id="export" data-t="导出成片"></button></div></fieldset></section></div>
+</section>
+<dialog id="editor"><div class="dialog-head"><h2 data-t="校对字幕"></h2><button class="round-close" id="closeEditor" aria-label="Close">×</button></div><p data-t="local_notice"></p><input id="search" type="search" aria-label="Search captions" placeholder="⌕"><div id="cueList"></div><div class="dialog-foot"><button id="saveCaptions" class="primary" data-t="保存"></button><span id="editCount"></span></div></dialog>
+<dialog id="approval"><div class="dialog-head"><h2 data-t="导出成片"></h2><button class="round-close" id="closeApproval" aria-label="Close">×</button></div><p data-t="local_notice"></p><pre id="review"></pre><button class="primary" id="approve" data-t="确认区间和字幕并导出"></button></dialog>
+</main><footer>AutoClip Team · source MIT · Local caption workspace</footer></body></html>

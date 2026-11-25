@@ -1,0 +1,13 @@
+{
+  "whisper_small_revision": "536b0662742c02347bc0e980a01041f333bce120",
+  "whisper_files": {
+    "config.json": "b55496ac7940a7ae47d2c01eab40edfd8701feec1229d9cce3b40014383fb828",
+    "tokenizer.json": "fb7b63191e9bb045082c79fd742a3106a12c99513ab30df4a0d47fa6cb6fd0ab",
+    "vocabulary.txt": "34ce3fe1c5041027b3f8d42912270993f986dbc4bb34cf27f951e34a1e453913",
+    "model.bin": "3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671"
+  },
+  "ffmpeg": {
+    "ffmpeg": "2e11c6f90993cdb79fff84d3f90044d28316b310e75b3e030cfc9a54f2c9d384",
+    "ffprobe": "2738aa46a7f9acbc8ab09a6715554c90f7de603171ac403726765685df6a0059"
+  }
+}
