@@ -18,7 +18,7 @@
 固定来源与校验：
 
 - Python 文件 `cpython-3.13.13+20260510-aarch64-apple-darwin-install_only.tar.gz`；SHA256 `1ad1ed518447005d4b6dfa16d4f847d45790e17e94e30164a0a6e6c79a99730f`。
-- Ollama 文件 `ollama-darwin.tgz`；发布元数据已核对版本和体积，下载前还须核验发布者可用的 digest/校验来源，缺校验来源先停，不改用未知站点。
+- Ollama 文件 `ollama-darwin.tgz`；发布元数据已核对版本、体积和 digest，SHA256 `015261f434d31d7f0781f8ba6b59cc8e1f70ecb562a4e6db44dfdd5e02f7e562`；下载后必须实际比对，不改用未知站点。
 - Whisper revision `536b0662742c02347bc0e980a01041f333bce120`；`model.bin` SHA256 `3e305921506d8872816023e4c273e75d2419fb89b24da97b4fe7bce14170d671`；其他小文件以固定 revision 与取得后哈希记录。
 - Qwen revision `7c41481f57cb95916b40956ab2f0b139b296d974`；`Qwen3-8B-Q4_K_M.gguf` SHA256 `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`。
 - 只允许上述官方托管/资产 CDN；不自动使用 hf-mirror、ghproxy、清华或其他镜像。不可达/来源改变则记录并再确认。
