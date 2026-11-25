@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-25",
+  "status": "PROPOSAL_ONLY_NOT_APPROVED_NOT_DOWNLOADED_NOT_EXECUTED",
+  "purpose": "Original baseline local media probe, trim, concat, subtitles and export",
+  "provider": "Third-party builder Martin Riedl, same fixed origin and pins as upstream",
+  "declared_build_license_basis": "Published configuration enables GPL and version3; treat as GPLv3 and third-party notices pending actual binary license verification",
+  "configuration_url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/versions.txt",
+  "upstream_pin_file": "scripts/ffmpeg-macos-arm64.env",
+  "binary_metadata_observation": "curl HEAD 200; no binary body GET; Python request may still return 403",
+  "distribution_count": 2,
+  "total_distribution_bytes": 56713400,
+  "files": [
+    {
+      "name": "ffmpeg",
+      "version": "9.0.2",
+      "architecture": "arm64",
+      "filename": "ffmpeg.zip",
+      "bytes": 28395699,
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffmpeg.zip",
+      "sha256": "c8ed4c4e6978a03c485edbfe4e0a5dc2380f8a30bba5150531b31b094492d924",
+      "format": "zip"
+    },
+    {
+      "name": "ffprobe",
+      "version": "9.0.2",
+      "architecture": "arm64",
+      "filename": "ffprobe.zip",
+      "bytes": 28317701,
+      "url": "https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/ffprobe.zip",
+      "sha256": "fcbe839537485eaee7a7a8bc5cbc0f90d53617e80943e8a5b2e31cb851197ea6",
+      "format": "zip"
+    }
+  ],
+  "limits": [
+    "Only private project directory, no system PKG or global PATH changes",
+    "Verify archive SHA256, safe extraction, arm64, signature, actual license/version/features before local tests",
+    "Isolate processes and children; no content/credentials sent to provider",
+    "No mirror, version, model or additional dependency fallback without approval",
+    "Source/size/hash/license changes or failed verification stop this component"
+  ]
+}

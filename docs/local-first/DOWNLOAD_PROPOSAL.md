@@ -30,8 +30,8 @@
 | 项目 | 现有证据 / 下一步 |
 | --- | --- |
 | Python 运行依赖 + faster-whisper 运行时 | **已单独获批、127 文件已全部下载/校验并禁网安装**，100,952,102 bytes，来源仍为 PyPI/files.pythonhosted.org。[冻结提案](PYTHON_DEPENDENCIES_PROPOSAL_2026-11-25.md) 与 JSON 保留原文件列表。原版 CLI help、真实本地 ASR 合成语音和原版适配器→本机模型通过组件测试；包内许可缺口及未完成验收见 B 回执，不宣称已能出片。 |
-| 新发现的 chardet 缺项 | `pysrt` 的实际源码/构建元数据要求它，原元数据预览漏列；当前 `pip check` 退出 1。额外候选 chardet 5.2.0，纯 Python wheel 199,385 bytes、LGPL 声明、PyPI/files.pythonhosted.org，已提出单项确认，**未批准、未下载/安装**；不得自动补齐。 |
-| FFmpeg + ffprobe arm64 | 原项目 pin 9.0.2 第三方站 `ffmpeg.martin-riedl.de` 的两个固定地址 HEAD 返回 403，大小和构建授权未核实，不在 A 内。可核对用户已有有权使用的二进制；否则对替代 arm64 发布物重新核对来源/大小/哈希/编译选项/许可证后申请下载。HEAD 失败不等于 GET 必然失败；本次没有下载来绕过确认。 |
+| chardet 补充项 | **已单独批准、下载、核验并禁网安装** chardet 5.2.0，纯 Python wheel 199,385 bytes，实际源许可 LGPL-2.1-or-later，来源仍为 PyPI/files.pythonhosted.org。`pip check` 从退出 1 变为 0；128 个批准分发版本核对一致。安装不等于给全部入口接通编码检测，具体限制见 [补充回执](CHARDET_SUPPLEMENT_RECEIPT_2026-11-25.md)。 |
+| FFmpeg + ffprobe arm64 | **未批准、未下载/执行二进制**。仍保留原项目 9.0.2 pin 与固定第三方站 `ffmpeg.martin-riedl.de`。Python 请求曾返回 403/连接失败；本轮 curl 对同地址 HEAD 200，两个 ZIP 分别 28,395,699 / 28,317,701 bytes，共 56,713,400 bytes；小型发布者 SHA256 与原 pin 一致，版本文本启用 GPL/version3。已冻结 [两文件提案](FFMPEG_DOWNLOAD_PROPOSAL_2026-11-25.json) 并请求确认；实际下载、签名、许可/架构/功能仍待核验，不装 PKG、不自动替换版本或镜像。 |
 | Node/npm/前端依赖 | UI 开发前再准备；源码 desktop pin 为 Node 20.20.2，而诊断测试另用 22.22.0，不能混为同一套环境。lock 479 项，含缺授权记录及 FSL Sentry CLI；无须为了首条本地 CLI 测试立即安装整个 UI/诊断服务工具链。 |
 | Rust/Tauri | 当前阶段不构建桌面发行包，不下载。现有 Xcode CLT 不等于 Rust 已安装。 |
 
