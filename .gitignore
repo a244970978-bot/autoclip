@@ -157,5 +157,23 @@ control/
 *.bak
 .gstack/
 
+# Local-first development: user media, transcripts, models and raw evidence stay local.
+# Existing upstream example/font/YuNet assets remain tracked; do not add user material here.
+/.local/
+/private-media/
+/local-models/
+/local-data/
+/audit-evidence/
+*.gguf
+*.safetensors
+*.words.json
+*.srt
+*.vtt
+*.ass
+*.m4a
+*.aiff
+*.aif
+*.opus
+
 # Python 打包产物
 *.egg-info/
