@@ -23,7 +23,7 @@
 - Qwen revision `7c41481f57cb95916b40956ab2f0b139b296d974`；`Qwen3-8B-Q4_K_M.gguf` SHA256 `d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`。
 - 只允许上述官方托管/资产 CDN；不自动使用 hf-mirror、ghproxy、清华或其他镜像。不可达/来源改变则记录并再确认。
 
-**A 已准备不意味着应用已能运行。** 它只准备解释器/模型服务/权重；后续 B 的批准/实际结果见下表及 [B 批回执](PYTHON_PREPARATION_RECEIPT_2026-11-25.md)，不能自动扩大安装范围。本地 ASR 合成语音和原版模型适配器组件测试已通过，但没有完成授权真实视频的整条应用闭环。
+**A 已准备不意味着应用已能运行。** 它只准备解释器/模型服务/权重；后续 B 的批准/实际结果见下表及 [B 批回执](PYTHON_PREPARATION_RECEIPT_2026-11-25.md)，不能自动扩大安装范围。本地 ASR/模型适配器已有合成及授权素材组件结果，FFmpeg 后续批准状态见下表；真实素材尚未审核/渲染，没有完成整条应用闭环。
 
 ## B. 后续准备状态与仍未批准的缺项
 
@@ -31,7 +31,7 @@
 | --- | --- |
 | Python 运行依赖 + faster-whisper 运行时 | **已单独获批、127 文件已全部下载/校验并禁网安装**，100,952,102 bytes，来源仍为 PyPI/files.pythonhosted.org。[冻结提案](PYTHON_DEPENDENCIES_PROPOSAL_2026-11-25.md) 与 JSON 保留原文件列表。原版 CLI help、真实本地 ASR 合成语音和原版适配器→本机模型通过组件测试；包内许可缺口及未完成验收见 B 回执，不宣称已能出片。 |
 | chardet 补充项 | **已单独批准、下载、核验并禁网安装** chardet 5.2.0，纯 Python wheel 199,385 bytes，实际源许可 LGPL-2.1-or-later，来源仍为 PyPI/files.pythonhosted.org。`pip check` 从退出 1 变为 0；128 个批准分发版本核对一致。安装不等于给全部入口接通编码检测，具体限制见 [补充回执](CHARDET_SUPPLEMENT_RECEIPT_2026-11-25.md)。 |
-| FFmpeg + ffprobe arm64 | **未批准、未下载/执行二进制**。仍保留原项目 9.0.2 pin 与固定第三方站 `ffmpeg.martin-riedl.de`。Python 请求曾返回 403/连接失败；本轮 curl 对同地址 HEAD 200，两个 ZIP 分别 28,395,699 / 28,317,701 bytes，共 56,713,400 bytes；小型发布者 SHA256 与原 pin 一致，版本文本启用 GPL/version3。已冻结 [两文件提案](FFMPEG_DOWNLOAD_PROPOSAL_2026-11-25.json) 并请求确认；实际下载、签名、许可/架构/功能仍待核验，不装 PKG、不自动替换版本或镜像。 |
+| FFmpeg + ffprobe arm64 | **用户已单独批准，两个固定 9.0.2 ZIP 已完整下载、大小/SHA256 匹配原 pin**，共 56,713,400 bytes，来源仍为 `ffmpeg.martin-riedl.de`。arm64、Martin Riedl Developer ID 签名完整性、实际 GPL-3.0-or-later、禁网版本/过滤器/编码器及自制 Studio 三段横/竖版渲染已有组件证据。未换版本/镜像或安装 PKG；再分发 notices/对应源码义务仍待复核。冻结 [提案 JSON](FFMPEG_DOWNLOAD_PROPOSAL_2026-11-25.json) 保留当时历史状态，后续授权和实际结果以 [最新回执](FFMPEG_NETWORK_AND_MEDIA_RECEIPT_2026-11-25.md) 为准。 |
 | Node/npm/前端依赖 | UI 开发前再准备；源码 desktop pin 为 Node 20.20.2，而诊断测试另用 22.22.0，不能混为同一套环境。lock 479 项，含缺授权记录及 FSL Sentry CLI；无须为了首条本地 CLI 测试立即安装整个 UI/诊断服务工具链。 |
 | Rust/Tauri | 当前阶段不构建桌面发行包，不下载。现有 Xcode CLT 不等于 Rust 已安装。 |
 
@@ -42,5 +42,5 @@
 - 模型/依赖准备完成后才对应用及模型服务进行完整出站限制测试；不能用环境开关或供应商隐私声明替代抓包/断网验证。[Ollama 禁云说明](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features)
 - 不上传用户真实视频供 Codex 分析；后续如确有需要，必须另说清将发给模型的具体材料并获准。开发者可先用自制合成文字做协议测试，但它不替代真实 ASR/成片验收。
 - 全部下载/运行数据留在忽略目录，记录来源、哈希、耗时、失败原因；失败不静默换云/换源。未批准的部分继续只核查。
-- A 只在 `.local/prepared/` 解压 Python/Ollama，B 在 `.local/environments/` 建独立 venv 并禁网安装；没有系统安装、全局 PATH/pip 修改、登录或后台服务注册。临时模型服务已停止；清理边界和实际测试记录见 A/B 回执，不删除原素材、其他项目环境、已有模型或钥匙串。
+- A 只在 `.local/prepared/` 解压 Python/Ollama，B 在 `.local/environments/` 建独立 venv 并禁网安装；没有系统安装、全局 PATH/pip 修改、登录或后台服务注册。临时模型服务已停止；FFmpeg 也只在项目私有目录准备，清理边界和实际测试记录见 A/B 及最新回执，不删除原素材、其他项目环境、已有模型或钥匙串。
 - 不购买订阅、不注册付费 API/云资源；无云调用费不等于没有本机硬件、电力、空间和维护成本。
