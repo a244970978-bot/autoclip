@@ -131,8 +131,16 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
         return workspace.start_job(pid, 'analyze', scope=(scope.start, scope.end))
 
     @app.get('/api/projects/{pid}/analysis')
-    def analysis(pid: str):
-        return {'analysis': workspace.analysis(pid)}
+    def analysis(pid: str, job_id: str | None = None):
+        return {'analysis': workspace.analysis(pid, job_id)}
+
+    @app.post('/api/projects/{pid}/one-click')
+    def one_click(pid: str):
+        return {'job': workspace.one_click(pid)}
+
+    @app.get('/api/projects/{pid}/analysis/{jid}/candidates/{cid}/preview')
+    def candidate_preview(pid: str, jid: str, cid: str):
+        return workspace.candidate_preview(pid, jid, cid)
 
     @app.get('/api/projects/{pid}/source')
     def source(pid: str):
@@ -155,8 +163,6 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
 
     @app.post('/api/projects/{pid}/transcribe')
     def retry_transcribe(pid: str):
-        if workspace.load(pid)['cues']:
-            raise CaptionError('revision_conflict')
         return workspace.start_job(pid, 'transcribe')
 
     @app.post('/api/projects/{pid}/jobs/{jid}/cancel')

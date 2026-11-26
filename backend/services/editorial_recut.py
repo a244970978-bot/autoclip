@@ -8,8 +8,11 @@ from backend.services.editorial_audio import optional_filler_ids
 from backend.services.local_captions import CaptionError
 from backend.services.local_reassembly import DEPENDENT, QUALIFIER, _span, build_candidate, windows
 
-MAX_TOPICS = 6  # One scan per window; never refine every suggestion in a long recording.
+MAX_TOPICS = 6  # Per batch; widen at most once when no exact hook-first edit passes.
+MAX_REFINEMENT_BATCHES = 2
+MAX_CALLS_PER_TOPIC = 5  # Body, hook, optional hook retry, reordered review, body review.
 MAX_TOPIC_TEXT = 3600
+MAX_HOOK_OPTIONS = 8
 CHECK_KEYS = ('flow', 'meaning', 'opening', 'ending')
 DROP_KINDS = ('filler', 'repetition', 'digression')
 NON_WORDS = re.compile(r'[\W_]+')
@@ -31,9 +34,13 @@ filler 是无信息的语气词或空转铺垫；repetition 是删后仍保留�
 HOOK = SYSTEM + """
 正文已经删过废话且保留原顺序。只从 kept_runs 的某一连续段内部挑一句到几句完整原话，移到片头，原位置不会保留。
 选最能迅速让听众听懂主题并愿意接着听的观点、冲突或具体做法。不能截断一句话、不靠指代或上一句话才能懂，不拆条件、对象和结论，搬走后正文仍有独立开场、解释和收束。
-必须是正文内部而非起句或结尾；不得跨越已去掉的字幕。没有稳妥提案就填 null。只返回 {"hook":["字幕首ID","字幕末ID"]} 或 {"hook":null}。
+必须是正文内部而非起句或结尾；不得跨越已去掉的字幕。
+对照 quote 与裁去冗余后的相邻字幕 before、after，判断原话自身和搬走后的正文是否都完整。程序只检查了裁切边界，不能保证这些选项的语义和衔接。
+请复制首尾两个 ID，只有一条字幕时同一个 ID 要填两次。不要返回文案、时间戳、选项序号或解释。没有稳妥提案就填 null。
+只返回 {"hook":["字幕首ID","字幕末ID"]} 或 {"hook":null}。
 """
-HOOK_RETRY = HOOK + "这次只可原样选 hook_options 中的一对 ID：其中仍可能有语义不合适的提案，不要求一定选，宁可填 null。"
+HOOK_INITIAL = HOOK + "请先读 suggested_hooks，优先原样复制其中一个完整合适的 span；若都不合适，可从 kept_runs 另选完整区间，也可以填 null。"
+HOOK_RETRY = HOOK + "这次只可原样复制 hook_options 中的一对 ID；参考 suggested_hooks 中对应的原文和语境。不要求一定选，宁可填 null。"
 REVIEW = SYSTEM + """
 你在独立复审一次已排出的剪辑，不要把它当成正确答案。按 edit 的先后逐刀读，跟 original、前后语境以及 deleted 对照。
 flow：逐刀前后仍连贯，没有半句、指代丢失或突兀的推论跳跃；meaning：删移后仍保留原意，不丢否定、条件、数字、对象和要点；
@@ -63,9 +70,9 @@ def _rows(cues):
     return [[cue['id'], cue['text']] for cue in cues]
 
 
-def _overlap(a, b):
+def _overlap(a, b, *, fraction=.45):
     overlap = min(a['end'], b['end']) - max(a['start'], b['start'])
-    return overlap > .45 * min(a['end'] - a['start'], b['end'] - b['start'])
+    return overlap > fraction * min(a['end'] - a['start'], b['end'] - b['start'])
 
 
 def _drops(raw, rows, ids):
@@ -162,7 +169,7 @@ def _hook_indexes(span, topic, topic_ids, start, retained):
 
 
 def _alternate_hooks(topic, start, retained):
-    """Bounded, varied retry options. Prefer audible sentence boundaries when labeled."""
+    """Rank possible complete-sentence spans; punctuation is evidence, not a requirement."""
     ranked = []
     qualified = [bool(QUALIFIER.search(c['text']) or QUALIFIER.search(c.get('original_text', c['text'])))
                  for c in topic]
@@ -179,6 +186,33 @@ def _alternate_hooks(topic, start, retained):
             boundaries = 2 * bool(SENTENCE_END.search(topic[j]['text'])) + bool(SENTENCE_END.search(topic[h-1]['text']))
             ranked.append((-boundaries, abs(length-5), h, j))
     return sorted(ranked)
+
+
+def _hook_suggestions(topic, start, retained, checked_hook):
+    """Expose only spans that survive the same structural checks as the final edit."""
+    options, descriptions, starts = {}, [], []
+    kept = sorted(i - start for i in retained)
+    for _, _, h, j in _alternate_hooks(topic, start, retained)[:48]:
+        if any(abs(topic[h]['start'] - old) < 2 for old in starts):
+            continue
+        quote = ''.join(cue['text'] for cue in topic[h:j+1])
+        if len(quote) > 280:  # Keep suggestions compact; kept_runs is the full transcript.
+            continue
+        span = topic[h]['id'], topic[j]['id']
+        try:
+            options[span] = checked_hook(list(span))
+        except ValueError:
+            continue
+        pos, next_pos = bisect_right(kept, h - 1), bisect_right(kept, j)
+        left = topic[kept[pos-1]]
+        right = topic[kept[next_pos]]
+        descriptions.append({'span': list(span), 'quote': quote,
+                             'before': [left['id'], left['text'][-80:]],
+                             'after': [right['id'], right['text'][:80]]})
+        starts.append(topic[h]['start'])
+        if len(options) == MAX_HOOK_OPTIONS:
+            break
+    return options, descriptions
 
 
 def _review_payload(plan, topic, context, cues, ids):
@@ -252,24 +286,15 @@ def _refine(candidate, cues, ids, scope, duration, pauses, invoke):
             raise ValueError('edit changed retained speech or duplicated hook')
         return proposed
 
-    hook_answer = invoke('hook', HOOK, kept, HOOK_SCHEMA, 68)
-    if isinstance(hook_answer, dict) and hook_answer.get('hook') is not None:
+    options, suggestions = _hook_suggestions(topic, a, retained, checked_hook)
+    kept['suggested_hooks'] = suggestions
+    hook_answer = invoke('hook', HOOK_INITIAL, kept, HOOK_SCHEMA, 68)
+    declined = isinstance(hook_answer, dict) and 'hook' in hook_answer and hook_answer['hook'] is None
+    if not declined:
         try:
-            attempt = checked_hook(hook_answer['hook'])
+            attempt = checked_hook(hook_answer.get('hook') if isinstance(hook_answer, dict) else None)
             hook_choice = 'initial'
         except ValueError:
-            options, starts = {}, []
-            for _, _, h, j in _alternate_hooks(topic, a, retained)[:48]:
-                if any(abs(topic[h]['start'] - old) < 2 for old in starts):
-                    continue
-                span = topic[h]['id'], topic[j]['id']
-                try:
-                    options[span] = checked_hook(list(span))
-                except ValueError:
-                    continue
-                starts.append(topic[h]['start'])
-                if len(options) == 8:
-                    break
             if options:
                 retry = invoke('hook', HOOK_RETRY, {**kept, 'hook_options': [list(s) for s in options]}, HOOK_SCHEMA, 68)
                 try:
@@ -305,7 +330,7 @@ def propose(cues, scope, duration, silences, call, progress=lambda *_: None):
     ids = {c['id']: i for i, c in enumerate(cues)}
     pauses = sorted(silences)
     proposals, shortlist, failed, done = [], [], 0, 0
-    total = len(chunks) + MAX_TOPICS * 5
+    total = len(chunks) + MAX_TOPICS * MAX_REFINEMENT_BATCHES * MAX_CALLS_PER_TOPIC
 
     def invoke(stage, instruction, payload, schema, max_tokens):
         nonlocal done
@@ -345,13 +370,25 @@ def propose(cues, scope, duration, silences, call, progress=lambda *_: None):
     if failed == len(chunks):
         raise CaptionError('analysis_failed')
 
-    for candidate in sorted(proposals, key=lambda c: (-c['appeal'], c['plan']['start'], c['plan']['end'])):
+    ranked = iter(sorted(proposals, key=lambda c: (-c['appeal'], c['plan']['start'], c['plan']['end'])))
+    for candidate in ranked:
         if not any(_overlap(candidate['plan'], x['plan']) for x in shortlist):
             shortlist.append(candidate)
             if len(shortlist) == MAX_TOPICS:
                 break
 
     refined = [_refine(c, cues, ids, scope, duration, pauses, invoke) for c in shortlist]
+    # A passed source-order body is useful, but is not an approved reorder.
+    # Search genuinely different source intervals, and never restart the scan.
+    if not any(p['mode'] == 'hook_first' and p['editorial_review'] == 'passed' for p in refined):
+        for candidate in ranked:
+            if any(_overlap(candidate['plan'], x['plan'], fraction=0) for x in shortlist):
+                continue
+            shortlist.append(candidate)
+            refined.append(_refine(candidate, cues, ids, scope, duration, pauses, invoke))
+            if len(shortlist) == MAX_TOPICS * MAX_REFINEMENT_BATCHES:
+                break
+
     chapters = [{**p, 'id': f'T{i+1:02}'} for i, p in enumerate(sorted(refined, key=lambda p: (p['start'], p['end'])))]
     reviewed = [p for p in chapters if p['editorial_review'] == 'passed']
     best = max(reviewed, key=lambda p: (p['mode'] == 'hook_first', p['appeal']), default=None)

@@ -5,6 +5,7 @@ Persistent media and transcripts belong in an ignored, isolated data directory.
 """
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import math
@@ -276,39 +277,97 @@ class CaptionWorkspace:
     def start_job(self, pid, kind, *, plan_hash=None, approved=False, scope=None):
         with self.lock:
             self.idle()
+            return self._enqueue(self.load(pid), kind, plan_hash=plan_hash, approved=approved, scope=scope)
+
+    def one_click(self, pid):
+        """Prepare selectable previews, never a saved draft, approval or render."""
+        with self.lock:
+            if self.closing:
+                raise CaptionError('busy')
             data = self.load(pid)
-            if kind == 'render' and (not approved or not plan_hash or plan_hash != data.get('plan_hash')):
-                raise CaptionError('approval_required')
-            if kind == 'render' and data['status'] != 'ready':
-                raise CaptionError('invalid_subtitles')
-            if kind == 'analyze':
-                if data['status'] != 'ready' or not data['cues']:
-                    raise CaptionError('analysis_no_cues')
-                duration = data['info']['duration']
-                a, b = (0 if scope[0] is None else scope[0], duration if scope[1] is None else scope[1])
-                if not 0 <= a < b <= duration or not 18 <= b-a <= 3*3600:
-                    raise CaptionError('analysis_range')
-                scope = (a,b)
-            if kind not in ('render', 'transcribe', 'analyze'):
-                raise CaptionError('invalid_job')
-            track = caption_track(data['cues'], data['draft'], data['info']) if kind == 'render' else None
-            self.space(max(256 * 1024**2, int(track['duration'] * 8 * 1024**2)) if track else 512 * 1024**2)
-            job = {'id': uuid.uuid4().hex, 'kind': kind, 'status': 'queued', 'created': time.time()}
-            path = self.path(pid) / 'metadata' / ('job-' + job['id'])
-            path.mkdir(parents=True)
+            if self.active is not None and self.active['pid'] == pid:
+                job = next(j for j in data['jobs'] if j['id'] == self.active['job'])
+                if job['status'] in ('queued', 'running') and not self.active['cancel'].is_set():
+                    if job.get('one_click') is True:
+                        return job
+                    if job['kind'] == 'transcribe' and not data['cues']:
+                        # The worker needs no new inputs. _run reloads this unconditional
+                        # follow-on intent when it accepts the completed transcription.
+                        job['one_click'] = True
+                        self.put(data)
+                        return job
+            self.idle()
+            return self._enqueue(data, 'analyze' if data['cues'] else 'transcribe', one_click=True)
+
+    def _enqueue(self, data, kind, *, plan_hash=None, approved=False, scope=None,
+                 one_click=False, previous=None):
+        """Queue with self.lock held. A continuation and its link are persisted together."""
+        self.idle()
+        pid = data['id']
+        if kind == 'render' and (not approved or not plan_hash or plan_hash != data.get('plan_hash')):
+            raise CaptionError('approval_required')
+        if kind == 'render' and data['status'] != 'ready':
+            raise CaptionError('invalid_subtitles')
+        if kind == 'transcribe' and data['cues']:
+            raise CaptionError('revision_conflict')
+        if kind == 'analyze':
+            if data['status'] != 'ready' or not data['cues']:
+                raise CaptionError('analysis_no_cues')
+            duration = data['info']['duration']
+            start, end = scope if scope is not None else (None, None)
+            a, b = 0 if start is None else start, duration if end is None else end
+            if not 0 <= a < b <= duration or not 18 <= b-a <= 3*3600:
+                raise CaptionError('analysis_range')
+            scope = (a, b)
+        if kind not in ('render', 'transcribe', 'analyze'):
+            raise CaptionError('invalid_job')
+        track = caption_track(data['cues'], data['draft'], data['info']) if kind == 'render' else None
+        self.space(max(256 * 1024**2, int(track['duration'] * 8 * 1024**2)) if track else 512 * 1024**2)
+        job = {'id': uuid.uuid4().hex, 'kind': kind, 'status': 'queued', 'created': time.time()}
+        if one_click:
+            job['one_click'] = True
+        path = self.path(pid) / 'metadata' / ('job-' + job['id'])
+        path.mkdir(parents=True)
+        try:
             atomic(path / 'task.json', {'project': data, 'job': job, 'track': track, 'scope': scope})
             data['jobs'].append(job)
+            if previous is not None:
+                previous['one_click_next'] = job['id']
             self.put(data)
-            active = {'pid': pid, 'job': job['id'], 'process': None, 'cancel': threading.Event()}
-            self.active = active
-            try:
-                self.pool.submit(self._run, active, path)
-            except BaseException:
-                self.active = None
-                job.update(status='failed', error='interrupted')
-                self.put(data)
-                raise
-            return job
+        except Exception:
+            if data['jobs'] and data['jobs'][-1] is job:
+                data['jobs'].pop()
+            if previous is not None:
+                previous.pop('one_click_next', None)
+            shutil.rmtree(path, ignore_errors=True)
+            raise
+        active = {'pid': pid, 'job': job['id'], 'process': None, 'cancel': threading.Event()}
+        self.active = active
+        try:
+            self.pool.submit(self._run, active, path)
+        except BaseException:
+            self.active = None
+            job.update(status='failed', error='interrupted')
+            self.put(data)
+            raise
+        return job
+
+    def _continue_one_click(self, data, job):
+        # _run still holds self.lock; nothing can insert other work or edit this
+        # project's just-transcribed cues between transcription and analysis.
+        self.active = None
+        try:
+            self._enqueue(data, 'analyze', one_click=True, previous=job)
+        except (CaptionError, OSError, RuntimeError) as error:
+            if isinstance(error, CaptionError):
+                code = error.code
+            elif isinstance(error, OSError):
+                code = 'disk_full' if error.errno == errno.ENOSPC else 'io_failed'
+            else:
+                code = 'interrupted'
+            # A scheduling failure is not a transcription failure. Keep the cues.
+            job['one_click_error'] = code
+            self.put(data)
 
     def _run(self, active, path):
         pid, jid, proc = active['pid'], active['job'], None
@@ -355,7 +414,10 @@ class CaptionWorkspace:
                 if job['kind'] == 'analyze':
                     job['subtitle_sha256'] = data['subtitle_sha256']
                 job.update(status='completed', seconds=result['seconds'])
-                self.put(data)
+                if job['kind'] == 'transcribe' and job.get('one_click'):
+                    self._continue_one_click(data, job)
+                else:
+                    self.put(data)
         except BaseException as error:
             if proc is not None and proc.poll() is None:
                 self._kill(proc)
@@ -386,10 +448,16 @@ class CaptionWorkspace:
     def cancel(self, pid, jid):
         with self.lock:
             a = self.active
-            if not a or (a['pid'], a['job']) != (pid, jid):
+            if not a or a['pid'] != pid:
                 raise CaptionError('not_running')
+            if a['job'] != jid:
+                # A click made just before the ASR → analysis handoff applies
+                # only to the exact continuation, never to another attempt.
+                jobs = self.load(pid)['jobs']
+                if not any(j['id'] == jid and j.get('one_click_next') == a['job'] for j in jobs):
+                    raise CaptionError('not_running')
             a['cancel'].set()
-            (self.path(pid) / 'metadata' / ('job-' + jid) / 'cancel').touch()
+            (self.path(pid) / 'metadata' / ('job-' + a['job']) / 'cancel').touch()
             proc = a['process']
         if proc:
             self._kill(proc)
@@ -403,14 +471,91 @@ class CaptionWorkspace:
         self.pool.shutdown(wait=True, cancel_futures=False)
 
     def analysis(self, pid, jid=None):
-        data = self.load(pid)
+        with self.lock:
+            data = self.load(pid)
+            match, report = self._analysis_result(data, jid)
+            if match and match.get('one_click'):
+                choices = [c for c in report.get('chapters', []) if self._preview_draft(data, report, c) is not None]
+                choices.sort(key=lambda c: (c['id'] == report.get('recommended'),
+                                            c.get('appeal') if type(c.get('appeal')) is int else 0), reverse=True)
+                report['previewable'] = [c['id'] for c in choices]
+            return report
+
+    def _analysis_result(self, data, jid):
         match = next((j for j in reversed(data['jobs']) if j['kind'] == 'analyze'
                       and j['status'] == 'completed' and (jid is None or j['id'] == jid)
-                      and j.get('subtitle_sha256') == data.get('subtitle_sha256')), None)
+                      and j.get('subtitle_sha256') and j['subtitle_sha256'] == data.get('subtitle_sha256')), None)
         if not match:
+            return None, None
+        path = self.path(data['id']) / 'metadata' / ('job-' + match['id']) / 'chapters.json'
+        if path.is_symlink():
+            return None, None
+        try:
+            report = json.loads(path.read_text())
+        except (FileNotFoundError, ValueError):
+            return None, None
+        if not isinstance(report, dict) or not isinstance(report.get('chapters'), list):
+            return None, None
+        return match, {**report, 'job_id': match['id']}
+
+    @staticmethod
+    def _preview_draft(data, report, chapter):
+        from backend.services.editorial_recut import CHECK_KEYS
+        from backend.services.studio.models import Draft
+        from backend.services.studio.intelligence import validate_scenes
+
+        if (report.get('analysis_version') != 'editorial_v1' or not isinstance(chapter, dict)
+                or not isinstance(chapter.get('id'), str) or chapter.get('mode') != 'hook_first'
+                or chapter.get('editorial_review') != 'passed'):
             return None
-        path = self.path(pid) / 'metadata' / ('job-' + match['id']) / 'chapters.json'
-        return {'job_id': match['id'], **json.loads(path.read_text())}
+        editorial = chapter.get('editorial_checks')
+        checks = editorial.get('checks') if isinstance(editorial, dict) else None
+        if (not isinstance(checks, dict) or editorial.get('outcome') != 'hook_accepted'
+                or set(checks) != set(CHECK_KEYS) or not all(value is True for value in checks.values())):
+            return None
+        try:
+            pieces = chapter['scenes']
+            roles = [s['role'] for s in pieces]
+            first_body = next((i for i, role in enumerate(roles) if role != 'hook'), 0)
+            if (not first_body or roles[-1] != 'close'
+                    or any(role not in ('body', 'close') for role in roles[first_body:])):
+                return None
+            scenes = [{'id': s['id'], 'start': s['start'], 'end': s['end'],
+                       'label': 'smart-' + ('body' if s['role'] == 'close' and i < len(pieces) - 1 else s['role'])}
+                      for i, s in enumerate(pieces)]
+            d = Draft(id='captions', title='AutoClip', scenes=scenes, subtitles=True,
+                      aspect=data['draft']['aspect'], subtitle_style=data['draft']['subtitle_style'])
+            duration = data['info']['duration']
+            validate_scenes(d.scenes, duration)
+            timeline = sorted(d.scenes, key=lambda s: s.start)
+            if (d.scenes[0].start <= d.scenes[first_body].start
+                    or d.scenes[first_body - 1].start >= d.scenes[-1].start
+                    or any(a.start >= b.start for i, (a, b) in enumerate(zip(d.scenes, d.scenes[1:]), 1)
+                           if i != first_body)
+                    or any(s.end > duration for s in timeline)
+                    or len({s.id for s in timeline}) != len(timeline)):
+                return None
+            for a, b in zip(timeline, timeline[1:]):
+                # Workers preserve up to 80/100 ms of padding on either side.
+                # That padding may meet in a short source-cue gap, not in speech.
+                if a.end > b.start and (a.end - b.start > .180001 or any(
+                        c['start'] < a.end and c['end'] > b.start for c in data['cues'])):
+                    return None
+        except (KeyError, TypeError, ValueError):
+            return None
+        return d.model_dump()
+
+    def candidate_preview(self, pid, jid, cid):
+        with self.lock:
+            data = self.load(pid)
+            _, report = self._analysis_result(data, jid)
+            if report is not None:
+                chapter = next((c for c in report['chapters'] if isinstance(c, dict) and c.get('id') == cid), None)
+                draft = self._preview_draft(data, report, chapter)
+                if draft is not None:
+                    return {'draft': draft, 'track': caption_track(data['cues'], draft, data['info']),
+                            'revision': data['revision'], 'job_id': jid, 'chapter_id': cid}
+            raise CaptionError('not_found')
 
     def download(self, pid, jid, kind):
         data = self.load(pid)

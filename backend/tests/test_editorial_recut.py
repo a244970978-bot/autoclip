@@ -25,7 +25,7 @@ def story():
 
 
 def plan(story, *, bad_hook=False, bad_review=False, bad_body_review=False, bad_scan=False, invalid_body=False,
-         choose_safe_retry=False):
+         choose_safe_retry=False, decline_hook=False):
     calls = []
 
     def response(_system, payload, *, schema=None, max_tokens=None):
@@ -46,6 +46,8 @@ def plan(story, *, bad_hook=False, bad_review=False, bad_body_review=False, bad_
             if choose_safe_retry and payload.get('hook_options'):
                 assert all('c00003' not in pair for pair in payload['hook_options'])
                 return {'hook': payload['hook_options'][0]}
+            if decline_hook:
+                return {'hook': None}
             x = 'c00003' if bad_hook else 'c00005'
             return {'hook': [x, x]}
         if stage == 'review':
@@ -65,6 +67,11 @@ def test_audio_and_captions_follow_retained_body_then_hook_then_exact_review(sto
     c, = r['chapters']
     assert [s for s,_ in calls] == ['scan','body','hook','review']
     assert [s for _,_,s in progress] == ['scan','body','hook','review','done']
+    offered = calls[2][1]['suggested_hooks']
+    assert len(offered) <= 8
+    assert {'span': ['c00005', 'c00005'], 'quote': TEXT[4],
+            'before': ['c00004', TEXT[3]], 'after': ['c00006', TEXT[5]]} in offered
+    assert all('c00003' not in choice['span'] for choice in offered)
     final_request = calls[-1][1]
     assert final_request['edit'][0][1] == ['c00005', TEXT[4]]
     assert sum(row[0]=='c00005' for s in final_request['edit'] for row in s[1:]) == 1
@@ -108,6 +115,14 @@ def test_bad_hook_can_be_replaced_by_one_safe_option_choice(story):
     assert c['editorial_checks']['hook_choice']=='safe_options'
 
 
+def test_explicit_hook_decline_does_not_force_reorder(story):
+    result, calls, _ = plan(story, decline_hook=True)
+    chapter, = result['chapters']
+    assert [stage for stage, _ in calls] == ['scan', 'body', 'hook', 'review']
+    assert chapter['mode'] == 'source_order'
+    assert chapter['editorial_checks']['outcome'] == 'body_accepted'
+
+
 def test_missing_body_plan_does_not_silently_choose_hook(story):
     r, calls, _ = plan(story,invalid_body=True)
     assert [s for s,_ in calls]==['scan','body']
@@ -117,3 +132,37 @@ def test_missing_body_plan_does_not_silently_choose_hook(story):
 def test_unusable_scan_is_failure_not_a_certified_edit(story):
     with pytest.raises(CaptionError,match='analysis_failed'):
         plan(story,bad_scan=True)
+
+
+@pytest.mark.parametrize('good_topic,expected_visited', [(6, 6), (7, 7), (None, 12)])
+def test_widens_topic_search_only_when_first_batch_has_no_safe_moved_hook(story, good_topic, expected_visited):
+    cues = [{**cue, 'id': f'c{i*len(story)+n+1:05}', 'start': cue['start'] + i*160,
+             'end': cue['end'] + i*160} for i in range(14) for n, cue in enumerate(story)]
+    visited, progress = [], []
+
+    def respond(_system, payload, **_kwargs):
+        stage = payload['stage']
+        if stage == 'scan':
+            return {'chapters': [{'title': '合成选题', 'topic': [payload['core_first'], payload['core_last']],
+                                  'appeal': 3}]}
+        if stage == 'body':
+            first = int(payload['rows'][0][0][1:]); visited.append(first)
+            return {'drop': [{'span': [f'c{first+2:05}'] * 2, 'kind': 'repetition'}]}
+        if stage == 'hook':
+            first = int(payload['kept_runs'][0][0][0][1:])
+            return {'hook': [f'c{first+4:05}'] * 2 if good_topic == (first-1)//len(story)+1 else None}
+        assert stage == 'review'
+        return dict.fromkeys(['flow', 'meaning', 'opening', 'ending'], True)
+
+    # The optional second batch scans all six candidates, unless only one was available.
+    bounded = cues[:7*len(story)] if good_topic is not None else cues
+    duration = 990 if good_topic is not None else 2120
+    result = propose(bounded, (0, duration), duration, [], respond, lambda *args: progress.append(args))
+    assert visited == list(range(1, expected_visited*len(story), len(story)))
+    assert [x[0] for x in progress] == sorted(x[0] for x in progress)
+    assert progress[-1][0] == progress[-1][1] and progress[-1][2] == 'done'
+    moved = [chapter['id'] for chapter in result['chapters'] if chapter['mode'] == 'hook_first']
+    if good_topic is not None:
+        assert moved == [result['recommended']] == [f'T{good_topic:02}']
+    else:
+        assert not moved

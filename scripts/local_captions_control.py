@@ -84,7 +84,11 @@ def main():
         parser.error('Invalid port')
     probe = socket.socket()
     try:
+        # Match the HTTP listener: old loopback connections in TIME_WAIT
+        # must not block an immediate controlled restart after a code change.
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         probe.bind(('127.0.0.1', args.port))
+        probe.listen(1)  # Still reject a live listener; do not use SO_REUSEPORT.
     finally:
         probe.close()
     python = ROOT / '.local/environments/autoclip-b-2026-11-25/bin/python'
