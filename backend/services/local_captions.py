@@ -474,10 +474,11 @@ class CaptionWorkspace:
         with self.lock:
             data = self.load(pid)
             match, report = self._analysis_result(data, jid)
-            if match and match.get('one_click'):
+            if match and (match.get('one_click') or report.get('analysis_version') == 'editorial_v2'):
                 choices = [c for c in report.get('chapters', []) if self._preview_draft(data, report, c) is not None]
-                choices.sort(key=lambda c: (c['id'] == report.get('recommended'),
-                                            c.get('appeal') if type(c.get('appeal')) is int else 0), reverse=True)
+                if report.get('analysis_version') == 'editorial_v1':
+                    choices.sort(key=lambda c: (c['id'] == report.get('recommended'),
+                                                c.get('appeal') if type(c.get('appeal')) is int else 0), reverse=True)
                 report['previewable'] = [c['id'] for c in choices]
             return report
 
@@ -501,23 +502,39 @@ class CaptionWorkspace:
     @staticmethod
     def _preview_draft(data, report, chapter):
         from backend.services.editorial_recut import CHECK_KEYS
+        from backend.services.editorial_selection import EVIDENCE
+        from backend.services.local_reassembly import _span
         from backend.services.studio.models import Draft
         from backend.services.studio.intelligence import validate_scenes
 
-        if (report.get('analysis_version') != 'editorial_v1' or not isinstance(chapter, dict)
-                or not isinstance(chapter.get('id'), str) or chapter.get('mode') != 'hook_first'
+        version = report.get('analysis_version')
+        if (version not in ('editorial_v1', 'editorial_v2') or not isinstance(chapter, dict)
+                or not isinstance(chapter.get('id'), str)
                 or chapter.get('editorial_review') != 'passed'):
+            return None
+        moved = chapter.get('mode') == 'hook_first'
+        if not moved and (version != 'editorial_v2' or chapter.get('mode') != 'source_order'):
             return None
         editorial = chapter.get('editorial_checks')
         checks = editorial.get('checks') if isinstance(editorial, dict) else None
-        if (not isinstance(checks, dict) or editorial.get('outcome') != 'hook_accepted'
+        if (not isinstance(checks, dict)
+                or editorial.get('outcome') != ('hook_accepted' if moved else 'body_accepted')
                 or set(checks) != set(CHECK_KEYS) or not all(value is True for value in checks.values())):
             return None
         try:
+            if version == 'editorial_v2':
+                coverage = report['reading']['coverage']
+                lo, hi = report['scope']
+                actual_count = sum(lo <= cue['start'] and cue['end'] <= hi for cue in data['cues'])
+                if (coverage['complete'] is not True or editorial.get('clean_body_confirmed') is not True
+                        or not 0 <= lo < hi <= data['info']['duration']
+                        or not 0 < actual_count == coverage['selected_cues'] == coverage['read_cues'] == coverage['screened_cues']
+                        or not 0 < coverage['segments_total'] == coverage['segments_read'] == coverage['segments_screened']):
+                    return None
             pieces = chapter['scenes']
             roles = [s['role'] for s in pieces]
             first_body = next((i for i, role in enumerate(roles) if role != 'hook'), 0)
-            if (not first_body or roles[-1] != 'close'
+            if (bool(first_body) != moved or roles[-1] != 'close'
                     or any(role not in ('body', 'close') for role in roles[first_body:])):
                 return None
             scenes = [{'id': s['id'], 'start': s['start'], 'end': s['end'],
@@ -528,8 +545,8 @@ class CaptionWorkspace:
             duration = data['info']['duration']
             validate_scenes(d.scenes, duration)
             timeline = sorted(d.scenes, key=lambda s: s.start)
-            if (d.scenes[0].start <= d.scenes[first_body].start
-                    or d.scenes[first_body - 1].start >= d.scenes[-1].start
+            if ((moved and (d.scenes[0].start <= d.scenes[first_body].start
+                            or d.scenes[first_body - 1].start >= d.scenes[-1].start))
                     or any(a.start >= b.start for i, (a, b) in enumerate(zip(d.scenes, d.scenes[1:]), 1)
                            if i != first_body)
                     or any(s.end > duration for s in timeline)
@@ -541,7 +558,26 @@ class CaptionWorkspace:
                 if a.end > b.start and (a.end - b.start > .180001 or any(
                         c['start'] < a.end and c['end'] > b.start for c in data['cues'])):
                     return None
-        except (KeyError, TypeError, ValueError):
+            if version == 'editorial_v2':
+                evidence = chapter['selection']['evidence']
+                if set(evidence) != set(EVIDENCE):
+                    return None
+                subtitle = data['cues']
+                ids = {c['id']: i for i, c in enumerate(subtitle)}
+                spans = {key: _span([v['first'], v['last']], ids) for key, v in evidence.items()}
+                claim, support, closing = (spans[k] for k in EVIDENCE)
+                if (not (claim[1] < support[0] or support[1] < claim[0])
+                        or closing[0] <= max(claim[1], support[1])):
+                    return None
+                for key, item in evidence.items():
+                    start, end = spans[key]
+                    cited = subtitle[start:end+1]
+                    if (item['start'] != cited[0]['start'] or item['end'] != cited[-1]['end']
+                            or item['quote'] != ' '.join(c['text'] for c in cited)
+                            or any(not any(s.start <= c['start'] + .000001 and s.end >= c['end'] - .000001
+                                           for s in timeline) for c in cited)):
+                        return None
+        except (IndexError, KeyError, TypeError, ValueError):
             return None
         return d.model_dump()
 

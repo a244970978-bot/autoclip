@@ -62,16 +62,16 @@ def main():
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             from backend.core import project_cancellation
-            from backend.services.editorial_audio import measure_pauses
-            from backend.services.editorial_recut import propose
+            from backend.services.editorial_audio import measure_candidate_pauses
+            from backend.services.editorial_selection import select_edits
             from backend.services.reassembly_runtime import local_model
             def progress(done, total, phase):
                 atomic(task_path.parent / 'progress.json', {'done': done, 'total': total, 'phase': phase})
-            progress(0, 1, 'audio')
-            with project_cancellation.bind(data['id']):
-                silence = measure_pauses(video, task['scope'], project_cancellation.run)
+            def measure(ranges):
+                with project_cancellation.bind(data['id']):
+                    return measure_candidate_pauses(video, ranges, project_cancellation.run)
             with local_model(task_path.parent / 'model-runtime.log') as call:
-                chapters = propose(data['cues'], task['scope'], data['info']['duration'], silence, call, progress)
+                chapters = select_edits(data['cues'], task['scope'], data['info']['duration'], call, measure, progress)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)

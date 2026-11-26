@@ -1,6 +1,7 @@
 """Self-generated media only: no real transcripts, credentials or cloud providers."""
 import io
 import json
+from copy import deepcopy
 from pathlib import Path
 import subprocess
 import sys
@@ -361,3 +362,138 @@ def test_one_click_candidates_are_exact_caption_bound_and_read_only(workspace, p
         assert client.post(base + '/export', json={'plan_hash': fresh['plan_hash']}, headers=headers).status_code == 409
         workspace.edit_captions(pid, fresh['revision'], [{'id': fresh['cues'][0]['id'], 'text': '校订测试'}])
         assert client.get(candidate + 'T01/preview').status_code >= 400
+
+
+@pytest.fixture
+def v2_selection(workspace, project):
+    """Persist a synthetic analysis-worker receipt using the normal local job lifecycle."""
+    pid = project['id']
+    cues = project['cues']
+    first, middle, last = cues
+    proof = {key: {'first': cue['id'], 'last': cue['id'], 'start': cue['start'],
+                   'end': cue['end'], 'quote': cue['text']}
+             for key, cue in zip(('claim', 'support', 'closing'), cues)}
+    selection = {'kind': 'how_to', 'audience': '合成测试受众', 'payoff': '合成测试收获',
+                 'reason': '合成测试依据', 'criteria': dict.fromkeys(
+                     ('relevance', 'novelty', 'evidence', 'payoff', 'independence'), 2),
+                 'evidence': proof}
+
+    def scene(cue, role):
+        return {'id': 's' + cue['id'], 'first': cue['id'], 'last': cue['id'],
+                'start': cue['start'], 'end': cue['end'], 'role': role}
+
+    def chapter(cid, moved):
+        scenes = [scene(middle, 'hook'), scene(first, 'body')] if moved else [
+            scene(first, 'body'), scene(middle, 'body')]
+        return {'id': cid, 'title': '自制样例', 'first': first['id'], 'last': last['id'],
+                'start': first['start'], 'end': last['end'], 'seconds': 15, 'appeal': 10,
+                'selection': selection, 'scenes': scenes + [scene(last, 'close')],
+                'mode': 'hook_first' if moved else 'source_order', 'editorial_review': 'passed',
+                'editorial_checks': {'outcome': 'hook_accepted' if moved else 'body_accepted',
+                                     'checks': dict.fromkeys(('flow', 'meaning', 'opening', 'ending'), True),
+                                     'clean_body_confirmed': True}}
+
+    report = {'analysis_version': 'editorial_v2', 'scope': [0, project['info']['duration']],
+              'recommended': 'T02', 'window_count': 1, 'failed_windows': 0,
+              'reading': {'summary': '自制材料全文摘要', 'sections': [
+                  {'first': first['id'], 'last': last['id'], 'start': first['start'], 'end': last['end'],
+                   'anchor': [middle['id'], middle['id']], 'summary': '自制材料阅读笔记'}],
+                          'coverage': {'complete': True, 'selected_cues': 3, 'read_cues': 3,
+                                       'screened_cues': 3, 'segments_total': 1, 'segments_read': 1,
+                                       'segments_screened': 1}},
+              'selection': {'rubric_version': 'spread_v1', 'discovered': 2, 'qualified': 2,
+                            'reviewed': 2, 'eligible': 2, 'limited': False},
+              'chapters': [chapter('T02', False), chapter('T01', True)]}
+    workspace.profile = Path('fixture-broker')
+    job = workspace.one_click(pid)
+    path = workspace.path(pid) / 'metadata' / ('job-' + job['id'])
+    (path / 'chapters.json').write_text(json.dumps(report))
+    (path / 'result.json').write_text('{"status":"completed","seconds":1}')
+    assert wait_job(workspace, pid, job['id'])['status'] == 'completed'
+    return job['id'], report, path / 'chapters.json'
+
+
+def test_v2_overview_clip_pages_complete_transcript_and_readonly_previews(workspace, project, v2_selection):
+    jid, report, _ = v2_selection
+    pid = project['id']
+    base = f'/api/projects/{pid}'
+    before = workspace.load(pid)
+    origin = 'http://127.0.0.1:19784'
+    headers = {'Origin': origin, 'X-Autoclip-Local': '1'}
+    with TestClient(create_caption_app(workspace), base_url=origin, client=('127.0.0.1', 1234)) as client:
+        # Deep links and reloads serve the local application shell, not a server 404.
+        for path in ('/', f'/projects/{pid}/editor', f'/projects/{pid}/clips/{jid}/T01'):
+            response = client.get(path)
+            assert response.status_code == 200 and response.headers['content-type'].startswith('text/html')
+            assert "connect-src 'self'" in response.headers['content-security-policy']
+        assert client.get(f'/projects/{pid}/clips/bad-id/T01').status_code == 404
+        assert client.get(f'/projects/{pid}/clips/{jid}/bad-id').status_code == 404
+        assert client.get(f'/projects/{"0"*32}/editor').status_code == 404
+        transcript = client.get(base + '/transcript')
+        assert transcript.status_code == 200 and 'transcript.srt' in transcript.headers['content-disposition']
+        assert transcript.text.strip().split('\n\n') == [
+            '1\n00:00:00,000 --> 00:00:05,000\n第一段测试',
+            '2\n00:00:05,000 --> 00:00:10,000\n第二段测试',
+            '3\n00:00:10,000 --> 00:00:15,000\n第三段测试']
+        assert client.get(base + '/transcript', headers={'Host': 'evil.example'}).status_code == 403
+        overview = client.get(base + '/analysis', params={'job_id': jid}).json()['analysis']
+        assert overview['reading'] == report['reading']
+        assert overview['previewable'] == ['T02', 'T01']
+        for cid, expected in [('T02', [0, 5, 10]), ('T01', [5, 0, 10])]:
+            response = client.get(f'{base}/analysis/{jid}/candidates/{cid}/preview')
+            assert response.status_code == 200, response.text
+            preview = response.json()
+            assert preview['chapter_id'] == cid and preview['job_id'] == jid and preview['revision'] == before['revision']
+            assert preview['draft']['subtitles'] and preview['track']['enabled']
+            assert [item['start'] for item in preview['draft']['scenes']] == expected
+            assert [cue['start'] for cue in preview['track']['source']] == expected
+            assert [cue['start'] for cue in preview['track']['output']] == [0, 5, 10]
+        assert client.post(base + '/export', headers=headers, json={'approved': True, 'plan_hash': '0'*64}).status_code == 409
+        assert workspace.load(pid) == before  # Navigating, switching or reading the transcript did not save/render.
+        assert not list(workspace.path(pid).glob('output/**/*.mp4'))
+        updated = workspace.edit_captions(pid, before['revision'], [{'id': 'c00001', 'text': '新版第一段'}])
+        assert updated['subtitle_sha256'] != before['subtitle_sha256']
+        assert '新版第一段' in client.get(base + '/transcript').text
+        assert client.get(base + '/analysis', params={'job_id': jid}).json()['analysis'] is None
+        assert client.get(f'{base}/analysis/{jid}/candidates/T02/preview').status_code == 404
+
+
+@pytest.mark.parametrize('damage', [
+    'incomplete', 'missing_screen_cue', 'understated_total', 'missing_body_review',
+    'duplicate_refs', 'early_closing', 'wrong_quote', 'invented_time', 'omitted_support',
+])
+def test_v2_preview_rejects_partial_coverage_unconfirmed_body_or_invalid_source_proof(
+        workspace, project, v2_selection, damage):
+    jid, original, file = v2_selection
+    report = deepcopy(original)
+    chapter = report['chapters'][0]
+    report['chapters'] = [chapter]
+    coverage = report['reading']['coverage']
+    evidence = chapter['selection']['evidence']
+    if damage == 'incomplete':
+        coverage['complete'] = False
+    elif damage == 'missing_screen_cue':
+        coverage['screened_cues'] -= 1
+    elif damage == 'understated_total':
+        coverage.update(selected_cues=1, read_cues=1, screened_cues=1)
+    elif damage == 'missing_body_review':
+        chapter['editorial_checks'].pop('clean_body_confirmed')
+    elif damage == 'duplicate_refs':
+        evidence['support'] = evidence['claim']
+    elif damage == 'early_closing':
+        evidence['closing'], evidence['claim'] = evidence['claim'], evidence['closing']
+    elif damage == 'wrong_quote':
+        evidence['claim']['quote'] = '并非素材原话'
+    elif damage == 'invented_time':
+        evidence['support']['start'] += .25
+    elif damage == 'omitted_support':
+        chapter['scenes'].pop(1)
+    file.write_text(json.dumps(report))
+    pid = project['id']
+    base = f'/api/projects/{pid}/analysis'
+    saved = workspace.load(pid)
+    origin = 'http://127.0.0.1:19784'
+    with TestClient(create_caption_app(workspace), base_url=origin, client=('127.0.0.1', 1234)) as client:
+        assert client.get(base, params={'job_id': jid}).json()['analysis']['previewable'] == []
+        assert client.get(f'{base}/{jid}/candidates/T02/preview').status_code == 404
+    assert workspace.load(pid) == saved

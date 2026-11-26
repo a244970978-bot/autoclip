@@ -81,25 +81,60 @@ def _append_inside_core(intervals, ranges, core_start, core_end):
             intervals.append((start, end))
 
 
-def measure_pauses(video, scope, run):
-    """Return sorted, padded source intervals; callers still intersect cue gaps.
-
-    Decode the same first audio stream as the caption workspace. Do not downmix
-    before measuring (opposite-phase stereo could otherwise look like silence).
-    Decode bounded chunks with context across boundaries. With no local Silero
-    runtime only the previous, longer FFmpeg silence test is used. Decode or
-    cancellation errors are not turned into a different analysis or provider.
-    """
-    start, end = map(float, scope)
+def _scope(span):
+    if not isinstance(span, (list, tuple)) or len(span) != 2 or any(isinstance(t, bool) for t in span):
+        raise ValueError('invalid audio analysis scope')
+    try:
+        start, end = map(float, span)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError('invalid audio analysis scope') from None
     if not (math.isfinite(start) and math.isfinite(end) and 0 <= start < end):
         raise ValueError('invalid audio analysis scope')
+    return start, end
+
+
+def measure_pauses(video, scope, run):
+    """Return sorted, padded source intervals; callers still intersect cue gaps."""
+    return measure_candidate_pauses(video, [scope], run)
+
+
+def measure_candidate_pauses(video, scopes, run):
+    """Measure only selected source passages, preserving the original timeline.
+
+    Validate and merge touching/overlapping scopes before opening the media,
+    but never bridge an unselected gap to obtain more VAD context. Reuse one
+    local detector and one audio probe across this set of candidates.
+    """
+    spans = []
+    for start, end in sorted(_scope(span) for span in scopes):
+        if spans and start <= spans[-1][1]:
+            spans[-1] = spans[-1][0], max(spans[-1][1], end)
+        else:
+            spans.append((start, end))
+    if not spans:
+        return []
+    return _measure_spans(video, spans, run)
+
+
+def _scoped_chunks(spans):
+    for start, end in spans:
+        for a, b in _chunks(start, end):
+            yield a, b, max(start, a-_CONTEXT_SECONDS), min(end, b+_CONTEXT_SECONDS)
+
+
+def _measure_spans(video, spans, run):
+    """Decode same first audio stream as ASR, preserving every channel.
+
+    Opposite-phase stereo may look silent if downmixed. With no local Silero
+    runtime use the prior, longer all-channel FFmpeg silence test. Decode and
+    cancellation errors are not turned into a different analysis or provider.
+    """
     detector = _detector()
     ranges = []
     if detector is None:
         from backend.services.reassembly_runtime import detect_silence
 
-        for a, b in _chunks(start, end):
-            lo, hi = max(start, a-_CONTEXT_SECONDS), min(end, b+_CONTEXT_SECONDS)
+        for a, b, lo, hi in _scoped_chunks(spans):
             silence = detect_silence(video, (lo, hi), run)
             _append_inside_core(ranges, ((x+.16, y-.16) for x, y in silence), a, b)
     else:
@@ -113,8 +148,7 @@ def measure_pauses(video, scope, run):
         channels = int(probe.stdout.strip() or 0)
         if not 1 <= channels <= 8:
             return []  # no automatically removable audio on unsupported channel layouts
-        for a, b in _chunks(start, end):
-            lo, hi = max(start, a-_CONTEXT_SECONDS), min(end, b+_CONTEXT_SECONDS)
+        for a, b, lo, hi in _scoped_chunks(spans):
             pcm = run([get_ffmpeg_path(), '-nostdin', '-v', 'error', '-protocol_whitelist', 'file,pipe',
                        '-ss', f'{lo:.6f}', '-i', str(video), '-t', f'{hi-lo:.6f}', '-map', '0:a:0',
                        '-vn', '-sn', '-dn', '-af', f'aresample={_RATE}:async=1:first_pts=0',

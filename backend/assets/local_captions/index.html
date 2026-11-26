@@ -1,37 +1,95 @@
 <!doctype html>
-<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoClip · 字幕</title><link rel="stylesheet" href="/assets/style.css"><script src="/assets/app.js" defer></script></head>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AutoClip · 本地剪辑</title><link rel="stylesheet" href="/assets/style.css"><script src="/assets/app.js" defer></script></head>
 <body>
-<header><a class="brand" href="/">AutoClip <span data-t="本地同步字幕"></span></a><nav><button id="previewTab" data-t="预览"></button><button id="editTab" data-t="校对字幕"></button></nav><select id="language" aria-label="Language"></select></header>
+<header>
+  <a class="brand" id="home" href="/">AutoClip <span data-t="local_workbench"></span></a>
+  <nav aria-label="AutoClip"><a id="overviewTab" href="/" data-t="clip_overview"></a><button id="editTab" hidden data-t="full_transcript"></button></nav>
+  <select id="language" aria-label="Language"></select>
+</header>
 <main>
-<p class="privacy" data-t="local_notice"></p><p id="error" class="error" role="alert"></p>
-<div id="importer" class="importer"><select id="projects" aria-label="Project"></select><label class="add" title="MP4 / H.264 / AAC">＋<input id="file" type="file" accept="video/mp4,.mp4"></label><span>MP4 · H.264 / AAC</span><span id="mediaInfo"></span><span id="status" role="status"></span><button id="cancel" data-t="取消"></button><button id="retry" data-t="重试"></button></div>
+<p id="error" class="error" role="alert"></p>
+<div id="importer" class="importer" hidden>
+  <label class="source-picker"><span data-t="source_file"></span><select id="projects" data-label="source_file"></select></label>
+  <label class="add" data-label="import_video" title="MP4 / H.264 / AAC">＋<input id="file" type="file" accept="video/mp4,.mp4" data-label="import_video"></label>
+  <span id="mediaInfo"></span><span id="status" role="status"></span><button id="cancel" data-t="取消"></button><button id="retry" data-t="重试"></button>
+</div>
+<section id="welcome" class="empty-state" hidden>
+  <h1 data-t="clip_overview"></h1><p data-t="import_to_start"></p><p class="privacy" data-t="local_notice"></p>
+</section>
 <section id="workspace" hidden>
-<section class="intelligent" aria-labelledby="smart-title">
-  <div class="one-click-head"><div><h2 id="smart-title" data-t="smart_edit"></h2><p data-t="one_click_help"></p></div>
-  <button class="primary" id="oneClick" data-t="one_click_generate"></button></div>
-  <p id="oneClickStatus" class="privacy" role="status"></p>
-  <div id="candidatePicker" hidden><h3 data-t="one_click_candidates"></h3><div id="candidateList" class="candidates"></div></div>
-</section>
-<section class="viewer">
-  <div id="stage" class="stage"><video id="video" controls playsinline preload="metadata"></video><div id="caption" class="caption" aria-live="off"></div></div>
-  <div class="toolbar viewer-tools"><button id="play" data-t="预览"></button><button id="original" data-t="原片"></button>
-    <input id="previewSeek" type="range" min="0" step=".01" value="0" data-label="one_click_seek" hidden><span id="clock"></span>
-    <button class="primary" id="exportCandidate" data-t="导出成片" hidden></button>
+  <section id="overview" class="overview" aria-labelledby="smart-title" hidden>
+    <div class="overview-head">
+      <div><div class="eyebrow" data-t="clip_overview"></div><h1 id="smart-title" data-t="smart_edit"></h1><p id="overviewSource"></p></div>
+      <button class="primary" id="oneClick" data-t="one_click_generate"></button>
+    </div>
+    <p class="muted overview-help" data-t="one_click_help"></p>
+    <div class="result-head">
+      <h2 id="candidateHeading" data-t="one_click_candidates"></h2>
+      <span class="count" id="candidateCount" hidden></span>
+    </div>
+    <p id="oneClickStatus" class="muted" role="status"></p>
+    <div id="analysisCoverage" class="coverage" hidden></div>
+    <div id="candidatePicker" hidden><ol id="candidateList" class="candidates"></ol></div>
+    <p class="privacy"><a id="manualLink" href="/" data-t="one_click_manual"></a> · <span data-t="local_notice"></span></p>
+  </section>
+  <section id="detail" aria-labelledby="detailTitle" hidden>
+    <div class="detail-nav"><a class="back" id="detailBack" href="/" data-t="back_to_overview"></a><a id="detailEditor" href="/" data-t="one_click_manual"></a></div>
+    <div id="detailContent" hidden>
+      <div class="detail-head">
+        <div class="eyebrow" id="detailIndex"></div>
+        <h1 id="detailTitle"></h1>
+        <p id="detailMeta" class="muted"></p>
+      </div>
+    </div>
+    <p id="detailStatus" class="muted" role="status"></p>
+  </section>
+  <section id="manualHead" aria-labelledby="manualTitle" hidden>
+    <a class="back" id="manualBack" href="/" data-t="back_to_overview"></a>
+    <h1 id="manualTitle" data-t="one_click_manual"></h1>
+  </section>
+  <div id="clipStudio" class="clip-studio" hidden>
+    <section class="viewer">
+      <div id="stage" class="stage"><video id="video" controls playsinline preload="metadata"></video><div id="caption" class="caption" aria-live="off"></div></div>
+      <div class="toolbar viewer-tools"><button id="play" data-t="预览"></button><button id="original" data-t="原片"></button>
+        <input id="previewSeek" type="range" min="0" step=".01" value="0" data-label="one_click_seek" hidden><span id="clock"></span>
+        <button class="primary" id="exportCandidate" data-t="导出成片" hidden></button>
+      </div>
+      <p id="previewDisclaimer" class="privacy" data-t="preview_disclaimer" hidden></p>
+      <div id="viewerJob" class="viewer-job" hidden><span id="viewerJobStatus" role="status"></span><button id="cancelViewerJob" data-t="取消"></button></div>
+      <div id="exports"></div>
+    </section>
+    <aside id="clipAudit" hidden>
+      <section id="selectionEvidence" class="audit-card" aria-labelledby="selectionHeading" hidden>
+        <h2 id="selectionHeading" data-t="selection_heading"></h2><div id="detailEvidence"></div>
+      </section>
+      <section class="audit-card" aria-labelledby="timelineHeading">
+        <h2 id="timelineHeading" data-t="preview_timeline"></h2><ol id="clipTimeline" class="timeline"></ol>
+      </section>
+      <section class="audit-card" aria-labelledby="cutHeading">
+        <h2 id="cutHeading" data-t="cut_audit"></h2><div id="cutAudit"></div>
+      </section>
+    </aside>
   </div>
-  <div id="exports"></div>
+  <details id="manual" class="plan manual" hidden>
+    <summary data-t="one_click_manual"></summary>
+    <p data-t="smart_explain"></p>
+    <div class="smart-controls">
+      <label><span data-t="scope_from"></span> <input id="smartStart" placeholder="0:00"></label>
+      <label><span data-t="scope_to"></span> <input id="smartEnd" placeholder="MM:SS"></label>
+      <button id="analyze" data-t="find_topics"></button>
+    </div>
+    <p id="smartStatus" class="privacy" role="status"></p><div id="chapters"></div>
+    <fieldset id="settings"><h2 data-t="调整镜头"></h2><div id="scenes"></div><button id="addScene" data-t="追加镜头"></button><div class="options"><label><span data-t="原画幅"></span><select id="aspect"><option value="original" data-t="原画幅"></option><option value="portrait">9:16 · fit</option></select></label><label><input id="subtitles" type="checkbox" checked><span data-t="字幕压进画面"></span></label><label><span data-t="字幕样式"></span><select id="style"><option value="clean">Clean</option><option value="box">Box</option><option value="bold">Bold</option><option value="accent">Accent</option></select></label></div><div class="toolbar"><button id="save" data-t="保存草稿"></button><button id="export" data-t="导出成片"></button></div></fieldset>
+  </details>
 </section>
-<details class="plan manual">
-  <summary data-t="one_click_manual"></summary>
-  <p data-t="smart_explain"></p>
-  <div class="smart-controls">
-    <label><span data-t="scope_from"></span> <input id="smartStart" placeholder="0:00"></label>
-    <label><span data-t="scope_to"></span> <input id="smartEnd" placeholder="MM:SS"></label>
-    <button id="analyze" data-t="find_topics"></button>
+<dialog id="editor" aria-labelledby="editorTitle">
+  <div class="dialog-head"><h2 id="editorTitle" data-t="full_transcript"></h2><button class="round-close" id="closeEditor" data-label="close_dialog">×</button></div>
+  <p class="privacy" data-t="local_notice"></p><p id="editorError" class="error" role="alert"></p><input id="search" type="search" data-label="search_transcript" placeholder="⌕"><div id="cueList"></div>
+  <div class="dialog-foot">
+    <div class="paging"><button id="cuePrev" data-label="prev_page">‹</button><span id="cuePage" role="status"></span><button id="cueNext" data-label="next_page">›</button></div>
+    <a id="transcriptDownload" data-t="download_transcript" download></a>
+    <button id="saveCaptions" class="primary" data-t="保存"></button><span id="editCount"></span>
   </div>
-  <p id="smartStatus" class="privacy" role="status"></p><div id="chapters"></div>
-  <fieldset id="settings"><h2 data-t="调整镜头"></h2><div id="scenes"></div><button id="addScene" data-t="追加镜头"></button><div class="options"><label><span data-t="原画幅"></span><select id="aspect"><option value="original" data-t="原画幅"></option><option value="portrait">9:16 · fit</option></select></label><label><input id="subtitles" type="checkbox" checked><span data-t="字幕压进画面"></span></label><label><span data-t="字幕样式"></span><select id="style"><option value="clean">Clean</option><option value="box">Box</option><option value="bold">Bold</option><option value="accent">Accent</option></select></label></div><div class="toolbar"><button id="save" data-t="保存草稿"></button><button id="export" data-t="导出成片"></button></div></fieldset>
-</details>
-</section>
-<dialog id="editor"><div class="dialog-head"><h2 data-t="校对字幕"></h2><button class="round-close" id="closeEditor" aria-label="Close">×</button></div><p data-t="local_notice"></p><input id="search" type="search" aria-label="Search captions" placeholder="⌕"><div id="cueList"></div><div class="dialog-foot"><button id="saveCaptions" class="primary" data-t="保存"></button><span id="editCount"></span></div></dialog>
-<dialog id="approval"><div class="dialog-head"><h2 data-t="导出成片"></h2><button class="round-close" id="closeApproval" aria-label="Close">×</button></div><p data-t="local_notice"></p><p id="approvalError" class="error" role="alert"></p><pre id="review"></pre><button class="primary" id="approve" data-t="确认区间和字幕并导出"></button></dialog>
-</main><footer>AutoClip Team · source MIT · Local caption workspace</footer></body></html>
+</dialog>
+<dialog id="approval" aria-labelledby="approvalTitle"><div class="dialog-head"><h2 id="approvalTitle" data-t="导出成片"></h2><button class="round-close" id="closeApproval" data-label="close_dialog">×</button></div><p data-t="local_notice"></p><p id="approvalError" class="error" role="alert"></p><pre id="review"></pre><button class="primary" id="approve" data-t="确认区间和字幕并导出"></button></dialog>
+</main><footer>AutoClip Team · source MIT · <span data-t="local_workbench"></span></footer></body></html>

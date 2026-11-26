@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 import json
 import os
+import re
 import tempfile
 
 from fastapi import FastAPI, File, Request, UploadFile
@@ -95,6 +96,18 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
     def index():
         return FileResponse(ASSETS / 'index.html')
 
+    @app.get('/projects/{pid}/editor')
+    def editor_page(pid: str):
+        workspace.path(pid)
+        return index()
+
+    @app.get('/projects/{pid}/clips/{jid}/{cid}')
+    def clip_page(pid: str, jid: str, cid: str):
+        workspace.path(pid)
+        if not re.fullmatch(r'[a-f0-9]{32}', jid) or not re.fullmatch(r'T[0-9]{2}', cid):
+            raise CaptionError('not_found')
+        return index()
+
     @app.get('/assets/{name}')
     def asset(name: str):
         if name == 'font.ttf':
@@ -141,6 +154,16 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
     @app.get('/api/projects/{pid}/analysis/{jid}/candidates/{cid}/preview')
     def candidate_preview(pid: str, jid: str, cid: str):
         return workspace.candidate_preview(pid, jid, cid)
+
+    @app.get('/api/projects/{pid}/transcript')
+    def transcript(pid: str):
+        from fastapi.responses import PlainTextResponse
+        from backend.services.local_captions import srt_body
+        data = workspace.load(pid)
+        if not data['cues']:
+            raise CaptionError('not_found')
+        return PlainTextResponse(srt_body(data['cues']),
+                                 headers={'Content-Disposition': 'attachment; filename="transcript.srt"'})
 
     @app.get('/api/projects/{pid}/source')
     def source(pid: str):

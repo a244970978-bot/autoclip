@@ -104,3 +104,52 @@ def test_decode_failure_does_not_silently_replace_result(monkeypatch):
 
     with pytest.raises(subprocess.CalledProcessError):
         editorial_audio.measure_pauses('placeholder.mp4', (0, 10), run)
+
+
+def test_selected_passages_only_share_one_probe_and_do_not_decode_gaps(monkeypatch):
+    calls = []
+    monkeypatch.setattr(editorial_audio, '_detector', lambda: (np, lambda _: []))
+
+    def run(command, **kwargs):
+        if '-show_entries' in command:
+            calls.append('probe')
+            return subprocess.CompletedProcess(command, 0, '2\n', '')
+        start = float(command[command.index('-ss') + 1])
+        length = float(command[command.index('-t') + 1])
+        calls.append((start, length))
+        return subprocess.CompletedProcess(command, 0, bytes(int(length * 16000 * 2 * 2)), b'')
+
+    pauses = editorial_audio.measure_candidate_pauses(
+        'placeholder.mp4', [(6, 7), (2, 5), (1, 3), (7, 8)], run)
+    assert calls == ['probe', (1., 4.), (6., 2.)]
+    assert pauses == [(1.04, 4.96), (6.04, 7.96)]
+
+
+def test_invalid_or_empty_selected_ranges_do_not_open_media(monkeypatch):
+    def unexpected(*args, **kwargs):
+        pytest.fail('no audio should be initialized or read')
+
+    monkeypatch.setattr(editorial_audio, '_detector', unexpected)
+    assert editorial_audio.measure_candidate_pauses('placeholder.mp4', [], unexpected) == []
+    for ranges in [[(0, 3), (4, float('nan'))], [(-1, 2)], [(3, 2)], [(0, 0)], [(1, 3, 4)], ['12'], [(False, 4)]]:
+        with pytest.raises(ValueError):
+            editorial_audio.measure_candidate_pauses('placeholder.mp4', ranges, unexpected)
+
+
+def test_selected_pause_stays_on_source_clock_with_delayed_audio_stream(tmp_path, monkeypatch):
+    source = tmp_path / 'delayed-audio.mp4'
+    tone = '.15*sin(2*PI*487*t)*(1-between(t,2.5,3.3))'
+    subprocess.run([get_ffmpeg_path(), '-nostdin', '-v', 'error',
+                    '-f', 'lavfi', '-i', 'color=black:size=160x90:rate=25:duration=7',
+                    '-itsoffset', '1.25', '-f', 'lavfi', '-i', f"aevalsrc='{tone}|-({tone})':s=16000:d=5",
+                    '-c:v', 'libx264', '-c:a', 'aac', str(source)],
+                   capture_output=True, check=True, timeout=20)
+    monkeypatch.setattr(editorial_audio, '_detector', lambda: (np, lambda _: []))
+    monkeypatch.setattr(editorial_audio, '_CHUNK_SECONDS', 1)
+
+    # The source is voiced in the first selected segment. Only the second has
+    # measured quiet; its stream-relative 2.5–3.3s gap is at 3.75–4.55s in video.
+    pauses = editorial_audio.measure_candidate_pauses(source, [(1.65, 2.6), (3.35, 5.2)], subprocess.run)
+    assert len(pauses) == 1
+    a, b = pauses[0]
+    assert 3.75 < a < 3.92 < 4.39 < b < 4.55
