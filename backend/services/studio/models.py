@@ -40,7 +40,9 @@ class CropPoint(BaseModel):
 
 class Scene(BaseModel):
     emphasis: tuple[float, float] | None = None
-    punch: float = Field(default=1, ge=1, le=1.6)
+    tempo: float = Field(default=1, ge=.9, le=1.18)
+    portrait_hold: float | None = Field(default=None, ge=.1)
+    punch: float = Field(default=1, ge=1, le=3)
     focus_x: float = Field(default=.5, ge=0, le=1)
     focus_y: float = Field(default=.5, ge=0, le=1)
     framing_source: Literal["auto", "manual"] | None = None
@@ -63,6 +65,8 @@ class Scene(BaseModel):
 
     @model_validator(mode='after')
     def interval(self):
+        if self.portrait_hold is not None and (self.emphasis is not None or self.portrait_hold > self.end-self.start+.001):
+            raise ValueError('Portrait hold must be inside one shot')
         if self.emphasis is not None and not self.start <= self.emphasis[0] < self.emphasis[1] <= self.end:
             raise ValueError('Emphasis must be inside its source shot')
         if self.end - self.start < .1:

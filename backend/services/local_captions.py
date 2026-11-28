@@ -90,11 +90,11 @@ def caption_track(cues, draft: dict, source_info: dict) -> dict:
         length = scene_duration(scene)
         body = slice_srt(entries, start, end, subtitle_line_limit(width, height, d.subtitle_style))
         for cue in pysrt.from_string(body):
-            a, b = cue.start.ordinal / 1000, min(cue.end.ordinal / 1000, length)
+            a, b = cue.start.ordinal / 1000, min(cue.end.ordinal / 1000, length*scene.tempo)
             if a >= b:
                 continue
             source.append({'scene': i, 'start': start + a, 'end': start + b, 'text': cue.text})
-            output.append({'scene': i, 'start': offset + a, 'end': offset + b, 'text': cue.text})
+            output.append({'scene': i, 'start': offset + a/scene.tempo, 'end': offset + b/scene.tempo, 'text': cue.text})
     return {'source': source, 'output': output, 'duration': sum(scene_duration(s) for s in d.scenes),
             'enabled': d.subtitles, 'width': width, 'height': height}
 
@@ -497,6 +497,9 @@ class CaptionWorkspace:
                     choices.sort(key=lambda c: (c['id'] == report.get('recommended'),
                                                 c.get('appeal') if type(c.get('appeal')) is int else 0), reverse=True)
                 report['previewable'] = [c['id'] for c in choices]
+                folder=self.path(pid)/'metadata'/('job-'+match['id'])
+                report['director_ready']=[c['id'] for c in choices if
+                                          (folder/('director-'+c['id']+'.json')).is_file()]
             return report
 
     def _analysis_result(self, data, jid):
@@ -601,7 +604,7 @@ class CaptionWorkspace:
             return None
         return d.model_dump()
 
-    def candidate_preview(self, pid, jid, cid):
+    def candidate_preview(self, pid, jid, cid, director=False):
         with self.lock:
             data = self.load(pid)
             _, report = self._analysis_result(data, jid)
@@ -612,7 +615,14 @@ class CaptionWorkspace:
                     from backend.services.local_emphasis import apply_emphasis
                     sidecar = self.path(pid) / 'metadata' / ('job-'+jid) / ('emphasis-'+chapter['id']+'.json')
                     draft = apply_emphasis(sidecar, data, jid, chapter, draft)
-                    return {'draft': draft, 'track': caption_track(data['cues'], draft, data['info']),
+                    notes=[]
+                    if director:
+                        from backend.services.local_director import read_variant
+                        try:
+                            draft,notes=read_variant(sidecar.with_name('director-'+chapter['id']+'.json'),data,jid,chapter,draft)
+                        except (KeyError, ValueError, TypeError, OSError):
+                            raise CaptionError('not_found') from None
+                    return {'draft': draft, 'director':bool(director),'relisten':notes, 'track': caption_track(data['cues'], draft, data['info']),
                             'revision': data['revision'], 'job_id': jid, 'chapter_id': cid}
             raise CaptionError('not_found')
 

@@ -462,7 +462,7 @@ def _encode_draft(
                             z, x, y = scene.punch, scene.focus_x, scene.focus_y
                             punch = (f'[0:v]scale=2*trunc(iw*{z}/2):2*trunc(ih*{z}/2),'
                                      f'crop=2*round(iw/{z}/2):2*round(ih/{z}/2):(iw-ow)*{x}:(ih-oh)*{y},setsar=1')
-                            if scene.emphasis:
+                            if scene.emphasis or scene.portrait_hold:
                                 from backend.services.local_emphasis import animated_filter
                                 size = (int(info['width']), int(info['height']))
                                 if info.get('rotation', 0) % 180 == 90:
@@ -471,10 +471,19 @@ def _encode_draft(
                             if graph:
                                 graph = graph.replace('[0:v]', punch + ',', 1)
                             else:
+                                last='punched'
                                 graph = punch + '[punched]'
                                 cmd[cmd.index('0:v:0')] = '[punched]'
+                        if scene.tempo != 1:
+                            # Subtitles stay on the source clock until picture and captions are retimed together.
+                            if not graph:
+                                graph='[0:v]null[rawtempo]'
+                                last='rawtempo'
+                                cmd[cmd.index('0:v:0')]='[rawtempo]'
+                            graph += f';[{last}]trim=duration={scene.end-scene.start:.7f},setpts=(PTS-STARTPTS)/{scene.tempo},fps=30[paced]'
+                            cmd[cmd.index(f'[{last}]')]='[paced]'
                         if keep_audio:
-                            graph = ';'.join(filter(None, [graph, audio.cut_filters(silence_input, duration)]))
+                            graph = ';'.join(filter(None, [graph, audio.cut_filters(silence_input, duration, scene.tempo, scene.end-scene.start)]))
                             cmd += ['-map', '[audioout]', '-c:a', 'pcm_s16le', '-ar', '48000', '-ac', '2']
                         else:
                             cmd += ['-an']

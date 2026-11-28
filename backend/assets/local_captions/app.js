@@ -1,7 +1,7 @@
 'use strict';
 // No dependencies, remote assets, analytics or provider calls. All URLs are same-origin.
 const $ = id => document.getElementById(id);
-let frameDirty = false, lexChanged = false;
+let frameDirty = false, lexChanged = false, auditionEnd = null;
 let messages = {}, language = localStorage.getItem('autoclip-caption-language') || 'zh';
 let current = null, localDraft = null, dirty = false, sourceMode = false, rendered = false;
 let sceneIndex = 0, pollTimer = null, captionEdits = new Map(), editorDirty = false;
@@ -126,6 +126,7 @@ function updatePreviewControls() {
   $('play').textContent = activePreview ? t(isPreview && !v.paused ? 'one_click_pause' : 'one_click_play') : t('预览');
 }
 function showPlan(draft) {
+  auditionEnd=null;
   const v = $('video');
   v.pause(); rendered = false; sourceMode = false; sceneIndex = 0; previewEnded = false;
   const path = `/api/projects/${current.id}/source`;
@@ -158,10 +159,13 @@ function updateTrack() {
 }
 function updateFraming(v, scene, apply, editable) {
   const stage = $('stage'), picture = $('picture'), controls = $('frameControls');
-  controls.hidden = !editable;
+  controls.hidden = !editable || !!activePreview?.director;
   if (!v.videoWidth || !v.videoHeight || !stage.clientWidth) return;
   const fit = Math.min(stage.clientWidth/v.videoWidth, stage.clientHeight/v.videoHeight);
   let z = apply ? scene?.punch || 1 : 1;
+  if(apply && scene?.portrait_hold && v.currentTime-scene.start >= scene.portrait_hold) z=1;
+  const tempo=apply ? scene?.tempo || 1 : 1;
+  if(v.playbackRate!==tempo){v.preservesPitch=true;v.playbackRate=tempo;}
   if (apply && scene?.emphasis) {
     const [a,b]=scene.emphasis, at=v.currentTime;
     z=1+(z-1)*Math.max(0,Math.min(1,(at-a)/.32,(b+.32-at)/.32));
@@ -185,7 +189,7 @@ function updateCaption() {
   $('caption').textContent = !rendered && draft.subtitles && cue && (!isPreview || !previewEnded) ? cue.text : '';
   if (isPreview) {
     const timing = activePreview.timing, seek = $('previewSeek');
-    const elapsed = previewEnded ? timing.at(-1) : timing[sceneIndex] + Math.min(scene.end - scene.start, Math.max(0, v.currentTime - scene.start));
+    const elapsed = previewEnded ? timing.at(-1) : timing[sceneIndex] + Math.min(scene.end - scene.start, Math.max(0, v.currentTime - scene.start))/(scene.tempo||1);
     if (Number(seek.max) !== timing.at(-1)) seek.max = timing.at(-1);
     if (document.activeElement !== seek || !v.seeking) seek.value = elapsed;
     $('clock').textContent = `${clockLabel(elapsed)} / ${clockLabel(timing.at(-1))}`;
@@ -195,6 +199,7 @@ function updateCaption() {
 }
 function tick() {
   const v = $('video');
+  if(sourceMode && auditionEnd!==null && !v.seeking && !v.paused && v.currentTime>=auditionEnd){v.pause();auditionEnd=null;}
   if (current && !sourceMode && !rendered && !v.paused && !v.seeking) {
     const scenes = viewedDraft().scenes, scene = scenes[sceneIndex];
     if (scene && v.currentTime < scene.start - .1) v.currentTime = scene.start;
@@ -206,7 +211,7 @@ function tick() {
   updateCaption(); requestAnimationFrame(tick);
 }
 function persistDraft(pid, revision, draft) {
-  const payload = { revision, local_simplified:draft.local_simplified ?? true, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段', emphasis:s.emphasis || null, punch:s.punch ?? 1, focus_x:s.focus_x ?? .5, focus_y:s.focus_y ?? .5 })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
+  const payload = { revision, local_simplified:draft.local_simplified ?? true, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段', tempo:s.tempo || 1, portrait_hold:s.portrait_hold || null, emphasis:s.emphasis || null, punch:s.punch ?? 1, focus_x:s.focus_x ?? .5, focus_y:s.focus_y ?? .5 })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
   return api(`/api/projects/${pid}/plan`, payload);
 }
 async function savePlan() {
@@ -291,7 +296,10 @@ function drawCandidateChoices() {
     link.append(top, text('h3', choice.title));
     if (choice.selection?.reason) link.append(text('p', choice.selection.reason));
     const open = text('span', `${t('open_clip')} →`); open.className = 'clip-open';
-    link.append(open); item.append(link); $('candidateList').append(item);
+    link.append(open); item.append(link);
+    if(report.director_ready?.includes(choice.id)){
+      const alt=text('a',t('director_open')+' →');alt.href=candidateHref(current.id,result.jobId,choice.id)+'?director=1&play=1';item.append(alt);
+    } $('candidateList').append(item);
   }
   drawCoverage();
 }
@@ -327,7 +335,7 @@ function drawEvidence(choice, legacy) {
 function drawDetail() {
   if (!detailChoice || !activePreview) return;
   const {choice, rank, legacy} = detailChoice;
-  $('detailIndex').textContent = `${t('clip_label')} ${String(rank + 1).padStart(2, '0')} · ${t(choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`;
+  $('detailIndex').textContent = `${t('clip_label')} ${String(rank + 1).padStart(2, '0')} · ${t(activePreview.director ? 'director_open' : choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`;
   $('detailTitle').textContent = choice.title;
   $('detailMeta').textContent = `${current.name} · ${t('source_range')} ${rangeLabel(choice)} · ${t('preview_length')} ${clockLabel(activePreview.track.duration)}`;
   document.title = `${choice.title} · AutoClip`;
@@ -336,11 +344,29 @@ function drawDetail() {
   for (const [i, scene] of activePreview.draft.scenes.entries()) {
     const role = choice.scenes?.[i]?.role;
     const line = text('li', `${t('role_' + (role === 'hook' || role === 'close' && i === activePreview.draft.scenes.length - 1 ? role : 'body'))} · ${editRange(scene)}`);
+    if(activePreview.director) line.textContent = t('director_'+scene.label)+' · '+editRange(scene)+' · '+String(scene.tempo || 1)+'×';
     const words = activePreview.track.source.filter(c => c.scene === i).map(c => c.text).join(' ');
     if (words) line.append(text('p', words));
     order.append(line);
   }
   const notes = $('cutAudit'); notes.replaceChildren();
+  if (activePreview.director) {
+    const info=text('section',''); info.append(text('h3',t('director_listen')));
+    for(const n of activePreview.relisten || []) {
+      const row=text('p',clockLabel(n.start)+' · '+n.before+(n.after?' → '+n.after:''));
+      const listen=text('button','▶'); listen.setAttribute('aria-label',t('原片'));listen.onclick=()=>{showOriginal(Math.max(0,n.start-.18));auditionEnd=n.end+.25;$('video').play().catch(fail);};
+      row.append(listen);
+      const edit=text('button',t('字幕'));edit.onclick=async()=>{
+        $('video').pause();await $('editTab').onclick();
+        const cue=current.cues.find(c=>c.id===n.cue);
+        if(!cue || !$('editor').open)return;
+        $('search').value=cue.text;cuePage=0;drawCues();
+        const field=Array.from($('cueList').querySelectorAll('textarea')).find(el=>el.getAttribute('aria-label')?.endsWith(' '+cue.id));
+        if(field){field.focus();field.select();}
+      };row.append(edit);info.append(row);
+    }
+    info.append(text('small',t('director_listen_help')));notes.append(info);return;
+  }
   if (choice.second_pass?.passed) notes.append(text('strong', t('second_pass')+' · '+t('pauses')+' '+choice.second_pass.pause+' · '+t('omit_filler')+' '+choice.second_pass.filler));
   const pauses = choice.removed_silence || [], omissions = choice.dropped || [];
   notes.append(text('p', `${t('pauses')} ${pauses.length} · ${t('omissions')} ${omissions.length}`));
@@ -369,12 +395,12 @@ async function loadDetail(jobId, chapterId) {
     const choices = reportChoices(analysis);
     const rank = choices.findIndex(c => c.id === chapterId);
     if (rank < 0) throw new Error('revision_conflict');
-    const preview = await api(`/api/projects/${pid}/analysis/${jobId}/candidates/${encodeURIComponent(chapterId)}/preview`, null, 'GET');
+    const preview = await api(`/api/projects/${pid}/analysis/${jobId}/candidates/${encodeURIComponent(chapterId)}/preview${params.get('director')==='1'?'?director=true':''}`, null, 'GET');
     if (!keep()) return;
     if (current.revision !== revision || current.subtitle_sha256 !== subtitleHash || preview.revision !== revision
         || preview.job_id !== jobId || preview.chapter_id !== chapterId) throw new Error('revision_conflict');
     const timing = [0];
-    for (const scene of preview.draft.scenes) timing.push(timing.at(-1) + (scene.end - scene.start));
+    for (const scene of preview.draft.scenes) timing.push(timing.at(-1) + Math.max(1,Math.round((scene.end-scene.start)/(scene.tempo||1)*30))/30);
     activePreview = {...preview, timing};
     detailChoice = {choice: choices[rank], rank, legacy: analysis.analysis_version === 'editorial_v1'};
     $('detailStatus').textContent = '';
@@ -459,7 +485,7 @@ function seekPreview(e) {
   sceneIndex = Math.min(draft.scenes.length - 1, timing.findLastIndex(offset => offset <= at));
   previewEnded = at >= timing.at(-1);
   if (previewEnded) v.pause();
-  v.currentTime = draft.scenes[sceneIndex].start + at - timing[sceneIndex];
+  v.currentTime = draft.scenes[sceneIndex].start + (at-timing[sceneIndex])*(draft.scenes[sceneIndex].tempo||1);
   updateCaption();
 }
 function drawChapters() {
@@ -625,6 +651,7 @@ function closeEditor() {
 }
 function guarded(fn) { return () => Promise.resolve().then(fn).catch(fail); }
 function showOriginal(start = 0) {
+  auditionEnd=null;
   rendered = false; sourceMode = true;
   const v = $('video'), path = `/api/projects/${current.id}/source`;
   v.pause();
@@ -633,7 +660,7 @@ function showOriginal(start = 0) {
 }
 function describeExport(draft, track, revision, hash) {
   return draft.scenes.map((s, i) => `${i + 1}. ${time(s.start)} → ${time(s.end)} s\n`
-    + (s.punch > 1 ? '×'+s.punch.toFixed(2)+' · X '+s.focus_x.toFixed(2)+' / Y '+s.focus_y.toFixed(2)+'\n' : '') + track.source.filter(c => c.scene === i).map(c => c.text).join('\n')).join('\n\n')
+    + (s.tempo && s.tempo!==1 ? s.tempo+'× · ' : '') + (s.punch > 1 ? '×'+s.punch.toFixed(2)+' · X '+s.focus_x.toFixed(2)+' / Y '+s.focus_y.toFixed(2)+'\n' : '') + track.source.filter(c => c.scene === i).map(c => c.text).join('\n')).join('\n\n')
     + `\n\n${t('字幕压进画面')}: ${draft.subtitles}\n${draft.aspect}\nV${revision}${hash ? '\n' + hash : ''}`;
 }
 async function prepareExport(candidate) {

@@ -163,8 +163,8 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
         return {'job': workspace.one_click(pid)}
 
     @app.get('/api/projects/{pid}/analysis/{jid}/candidates/{cid}/preview')
-    def candidate_preview(pid: str, jid: str, cid: str):
-        return workspace.candidate_preview(pid, jid, cid)
+    def candidate_preview(pid: str, jid: str, cid: str, director: bool = False):
+        return workspace.candidate_preview(pid, jid, cid, director)
 
     @app.get('/api/projects/{pid}/transcript')
     def transcript(pid: str):

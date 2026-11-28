@@ -63,8 +63,11 @@ def apply_emphasis(path, data, jid, chapter, draft):
 def animated_filter(scene, source_width, source_height):
     # Normalize PTS/frame rate first: one output per input frame. One motion
     # expression for preview/export: ramp in on the sentence, ramp out after.
-    a,b = (t-scene.start for t in scene.emphasis)
-    ramp = f'max(0,min(1,min((on/30-{a:.6f})/0.32,({b+.32:.6f}-on/30)/0.32)))'
+    if scene.portrait_hold is not None:
+        ramp=f'lt(on/30,{scene.portrait_hold:.6f})'
+    else:
+        a,b = (t-scene.start for t in scene.emphasis)
+        ramp = f'max(0,min(1,min((on/30-{a:.6f})/0.32,({b+.32:.6f}-on/30)/0.32)))'
     return (f"[0:v]setpts=PTS-STARTPTS,fps=30,zoompan=z='1+{scene.punch-1:.8f}*{ramp}':"
             f"x='(iw-iw/zoom)*{scene.focus_x:.8f}':y='(ih-ih/zoom)*{scene.focus_y:.8f}':"
             f"d=1:s={source_width}x{source_height}:fps=30,setsar=1")

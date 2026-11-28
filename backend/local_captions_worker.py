@@ -80,6 +80,9 @@ def main():
                 with project_cancellation.bind(data['id']):
                     chapters = polish_report(chapters, data['cues'], measure, call,
                                              lambda s: portrait(video,s,project_cancellation.run), progress)
+                    from backend.services.director_builder import make_one
+                    chapters['director_pick'] = make_one(chapters, data, task_path.parent, video, call,
+                                                        project_cancellation.run, progress)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)

@@ -551,3 +551,26 @@ def test_animated_claim_and_simplified_captions_use_approved_plan(workspace, pro
     assert diff(1.75)>max(diff(.25),diff(3.5))+6
     assert '团队发现这个问题' in workspace.download(d['id'],job['id'],'subtitles').read_text()
     assert workspace.load(d['id'])['cues'][0]['text']==original
+
+
+def test_fixed_speaker_cut_and_pace_use_shared_media_and_caption_clocks(workspace,project):
+    from backend.utils.ffmpeg_utils import get_ffmpeg_path
+    import numpy as np
+    d=workspace.plan(project['id'],project['revision'],{'subtitles':True,'scenes':[
+        dict(id='wide',start=0,end=4),dict(id='near',start=0,end=4,punch=2.6,focus_x=.8,portrait_hold=1.8),
+        dict(id='quick',start=5,end=9,tempo=1.12),dict(id='slow',start=10,end=14,tempo=.96)]})
+    t=caption_track(d['cues'],d['draft'],d['info'])
+    assert t['duration']==pytest.approx(8+round(4/1.12*30)/30+round(4/.96*30)/30)
+    assert next(r for r in t['source'] if r['scene']==2)['start']==5
+    assert next(r for r in t['output'] if r['scene']==2)['start']==8
+    job=workspace.start_job(d['id'],'render',plan_hash=d['plan_hash'],approved=True)
+    assert wait_job(workspace,d['id'],job['id'])['status']=='completed'
+    v=workspace.download(d['id'],job['id'],'video')
+    def pixels(at):
+        return np.frombuffer(subprocess.check_output([get_ffmpeg_path(),'-v','error','-ss',str(at),'-i',str(v),
+            '-frames:v','1','-vf','crop=iw:ih/2:0:0,scale=80:40,format=gray','-f','rawvideo','-']),np.uint8).astype(float)
+    assert np.mean(abs(pixels(.2)-pixels(4.2)))>np.mean(abs(pixels(3)-pixels(7)))+6
+    for at in [8.6,12.4]:
+        wav=np.frombuffer(subprocess.check_output([get_ffmpeg_path(),'-v','error','-ss',str(at),'-i',str(v),
+            '-t','0.5','-ac','1','-ar','16000','-f','f32le','-']),'<f4')
+        assert abs(np.argmax(abs(np.fft.rfft(wav)))*16000/len(wav)-400)<7

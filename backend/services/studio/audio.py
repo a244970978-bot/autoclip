@@ -13,10 +13,10 @@ def has_audio(video):
 
 def scene_duration(scene):
     # All video cuts are 30 fps; align audio to the same whole-frame durations.
-    return max(1, round((scene.end-scene.start)*30)) / 30
+    return max(1, round((scene.end-scene.start)/getattr(scene,"tempo",1)*30)) / 30
 
 
-def cut_filters(silence_input, duration):
+def cut_filters(silence_input, duration, tempo=1, source_seconds=None):
     # The silence input is finite via atrim. It also covers ranges after the
     # original audio track ends, where apad alone receives no input frames.
     fade_in = min(.008, duration/4)
@@ -24,7 +24,8 @@ def cut_filters(silence_input, duration):
     return (
         '[0:a:0]aresample=48000:async=1:first_pts=0,'
         'aformat=sample_fmts=fltp:channel_layouts=stereo[original];'
-        f'[{silence_input}:a:0][original]amix=inputs=2:duration=longest:normalize=0,'
+        f'[{silence_input}:a:0][original]amix=inputs=2:duration=longest:normalize=0,' +
+        (f'atrim=duration={source_seconds},asetpts=PTS-STARTPTS,atempo={tempo},apad,' if tempo!=1 else '') +
         f'atrim=duration={duration},asetpts=PTS-STARTPTS,'
         f'afade=t=in:st=0:d={fade_in},afade=t=out:st={duration-fade_out}:d={fade_out}[audioout]'
     )

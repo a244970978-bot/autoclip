@@ -137,7 +137,15 @@
     "find_terms": "保存词表并查找建议",
     "second_pass": "二检通过",
     "second_progress": "正在二检剪口与主题",
-    "ime_terms": "载入搜狗机构名候选"
+    "ime_terms": "载入搜狗机构名候选",
+    "director_open": "看说话人近景版",
+    "director_opening": "开场原话",
+    "director_bridge": "必要背景或过渡",
+    "director_example": "案例或证据",
+    "director_method": "方法",
+    "director_payoff": "结尾兑现",
+    "director_listen": "字幕复听",
+    "director_listen_help": "两次本机复听不是人工听校。箭头表示候选写法，不自动改原话；点播放听原片，点字幕可改。"
   },
   "tr": {
     "播放成片": "Dışa aktarılan videoyu oynat",
@@ -277,7 +285,15 @@
     "find_terms": "Kaydet ve eşleştir",
     "second_pass": "İkinci kontrol geçti",
     "second_progress": "Kesimler ve akış denetleniyor",
-    "ime_terms": "Sogou kurum adlarını yükle"
+    "ime_terms": "Sogou kurum adlarını yükle",
+    "director_open": "Konuşmacı yakın planını izle",
+    "director_opening": "Açılış",
+    "director_bridge": "Bağlam",
+    "director_example": "Örnek veya kanıt",
+    "director_method": "Yöntem",
+    "director_payoff": "Sonuç",
+    "director_listen": "Altyazıyı dinle",
+    "director_listen_help": "Oklar öneridir. Özgün kaydı dinleyin veya altyazıyı düzenleyin."
   },
   "ja": {
     "播放成片": "完成動画を再生",
@@ -417,7 +433,15 @@
     "find_terms": "用語を保存して照合",
     "second_pass": "二次確認済み",
     "second_progress": "つなぎと内容を再確認中",
-    "ime_terms": "Sogou 組織名候補を読み込む"
+    "ime_terms": "Sogou 組織名候補を読み込む",
+    "director_open": "話者の寄りで見る",
+    "director_opening": "冒頭",
+    "director_bridge": "背景・つなぎ",
+    "director_example": "例・根拠",
+    "director_method": "方法",
+    "director_payoff": "結び",
+    "director_listen": "字幕の聞き直し",
+    "director_listen_help": "矢印は候補です。元音声を聞いて字幕を修正できます。"
   },
   "de": {
     "播放成片": "Exportiertes Video abspielen",
@@ -557,7 +581,15 @@
     "find_terms": "Speichern und abgleichen",
     "second_pass": "Zweitprüfung bestanden",
     "second_progress": "Schnitte und Zusammenhang prüfen",
-    "ime_terms": "Sogou-Organisationsnamen laden"
+    "ime_terms": "Sogou-Organisationsnamen laden",
+    "director_open": "Sprecherfassung ansehen",
+    "director_opening": "Einstieg",
+    "director_bridge": "Kontext",
+    "director_example": "Beispiel oder Beleg",
+    "director_method": "Methode",
+    "director_payoff": "Abschluss",
+    "director_listen": "Untertitel nachhören",
+    "director_listen_help": "Vorschläge ersetzen keine Prüfung. Original anhören oder Untertitel ändern."
   },
   "ru": {
     "播放成片": "Воспроизвести готовое видео",
@@ -697,7 +729,15 @@
     "find_terms": "Сохранить и найти",
     "second_pass": "Повторная проверка пройдена",
     "second_progress": "Проверка склеек и связности",
-    "ime_terms": "Загрузить названия из Sogou"
+    "ime_terms": "Загрузить названия из Sogou",
+    "director_open": "Посмотреть крупный план",
+    "director_opening": "Начало",
+    "director_bridge": "Контекст",
+    "director_example": "Пример или аргумент",
+    "director_method": "Метод",
+    "director_payoff": "Итог",
+    "director_listen": "Проверить субтитры",
+    "director_listen_help": "Стрелки отмечают варианты. Прослушайте оригинал или исправьте субтитры."
   },
   "pt": {
     "播放成片": "Reproduzir vídeo exportado",
@@ -837,7 +877,15 @@
     "find_terms": "Salvar e comparar",
     "second_pass": "Segunda revisão aprovada",
     "second_progress": "Revisando cortes e coerência",
-    "ime_terms": "Carregar organizações do Sogou"
+    "ime_terms": "Carregar organizações do Sogou",
+    "director_open": "Ver plano do falante",
+    "director_opening": "Abertura",
+    "director_bridge": "Contexto",
+    "director_example": "Exemplo ou prova",
+    "director_method": "Método",
+    "director_payoff": "Fecho",
+    "director_listen": "Reouvir legendas",
+    "director_listen_help": "As setas indicam sugestões. Ouça o original ou edite as legendas."
   },
   "en": {
     "播放成片": "Play exported video",
@@ -977,7 +1025,15 @@
     "find_terms": "Save terms and find matches",
     "second_pass": "Second review passed",
     "second_progress": "Checking cuts and flow",
-    "ime_terms": "Load Sogou organization names"
+    "ime_terms": "Load Sogou organization names",
+    "director_open": "Watch speaker cut",
+    "director_opening": "Opening line",
+    "director_bridge": "Context or transition",
+    "director_example": "Example or evidence",
+    "director_method": "Method",
+    "director_payoff": "Payoff",
+    "director_listen": "Check the transcript",
+    "director_listen_help": "Two local passes are not human verification. Arrows are suggestions. Listen to the source or edit captions."
   },
   "fr": {
     "播放成片": "Lire la vidéo exportée",
@@ -1117,7 +1173,15 @@
     "find_terms": "Enregistrer et comparer",
     "second_pass": "Seconde vérification réussie",
     "second_progress": "Vérification du montage",
-    "ime_terms": "Charger les organisations de Sogou"
+    "ime_terms": "Charger les organisations de Sogou",
+    "director_open": "Voir la version en gros plan",
+    "director_opening": "Ouverture",
+    "director_bridge": "Contexte",
+    "director_example": "Exemple ou preuve",
+    "director_method": "Méthode",
+    "director_payoff": "Conclusion",
+    "director_listen": "Réécouter les sous-titres",
+    "director_listen_help": "Les suggestions ne remplacent pas une vérification. Écouter ou corriger."
   },
   "ko": {
     "播放成片": "완성 영상 재생",
@@ -1257,7 +1321,15 @@
     "find_terms": "용어 저장 및 검색",
     "second_pass": "2차 검토 통과",
     "second_progress": "편집점과 흐름 검토 중",
-    "ime_terms": "Sogou 기관명 후보 불러오기"
+    "ime_terms": "Sogou 기관명 후보 불러오기",
+    "director_open": "화자 근접 컷 보기",
+    "director_opening": "도입",
+    "director_bridge": "배경 또는 전환",
+    "director_example": "사례 또는 근거",
+    "director_method": "방법",
+    "director_payoff": "마무리",
+    "director_listen": "자막 다시 듣기",
+    "director_listen_help": "화살표는 제안입니다. 원음을 듣거나 자막을 수정하세요."
   },
   "zh-TW": {
     "播放成片": "播放匯出影片",
@@ -1397,7 +1469,15 @@
     "find_terms": "儲存詞表並比對",
     "second_pass": "二檢通過",
     "second_progress": "正在複檢剪接與主題",
-    "ime_terms": "載入搜狗機構名候選"
+    "ime_terms": "載入搜狗機構名候選",
+    "director_open": "觀看說話人近景版",
+    "director_opening": "開場原話",
+    "director_bridge": "背景或轉場",
+    "director_example": "案例或證據",
+    "director_method": "方法",
+    "director_payoff": "結尾回應",
+    "director_listen": "字幕複聽",
+    "director_listen_help": "箭頭為本機辨識建議，不會自動覆寫。可播放原音或編輯字幕。"
   },
   "vi": {
     "播放成片": "Phát video thành phẩm",
@@ -1537,7 +1617,15 @@
     "find_terms": "Lưu và tìm",
     "second_pass": "Đạt kiểm tra lần hai",
     "second_progress": "Đang kiểm tra mạch và điểm cắt",
-    "ime_terms": "Nạp tên tổ chức từ Sogou"
+    "ime_terms": "Nạp tên tổ chức từ Sogou",
+    "director_open": "Xem bản cận người nói",
+    "director_opening": "Mở đầu",
+    "director_bridge": "Bối cảnh",
+    "director_example": "Ví dụ hoặc bằng chứng",
+    "director_method": "Phương pháp",
+    "director_payoff": "Kết luận",
+    "director_listen": "Nghe lại phụ đề",
+    "director_listen_help": "Mũi tên là gợi ý. Nghe âm thanh gốc hoặc sửa phụ đề."
   },
   "id": {
     "播放成片": "Putar video hasil ekspor",
@@ -1677,7 +1765,15 @@
     "find_terms": "Simpan dan cocokkan",
     "second_pass": "Lolos tinjauan kedua",
     "second_progress": "Memeriksa potongan dan alur",
-    "ime_terms": "Muat nama organisasi Sogou"
+    "ime_terms": "Muat nama organisasi Sogou",
+    "director_open": "Lihat versi sorot pembicara",
+    "director_opening": "Pembuka",
+    "director_bridge": "Konteks",
+    "director_example": "Contoh atau bukti",
+    "director_method": "Metode",
+    "director_payoff": "Penutup",
+    "director_listen": "Periksa subtitel",
+    "director_listen_help": "Panah menandai saran. Dengarkan sumber atau sunting subtitel."
   },
   "es": {
     "播放成片": "Reproducir vídeo exportado",
@@ -1817,6 +1913,14 @@
     "find_terms": "Guardar y buscar",
     "second_pass": "Segunda revisión superada",
     "second_progress": "Revisando cortes e hilo",
-    "ime_terms": "Cargar organizaciones de Sogou"
+    "ime_terms": "Cargar organizaciones de Sogou",
+    "director_open": "Ver plano del hablante",
+    "director_opening": "Apertura",
+    "director_bridge": "Contexto",
+    "director_example": "Ejemplo o prueba",
+    "director_method": "Método",
+    "director_payoff": "Cierre",
+    "director_listen": "Revisar subtítulos",
+    "director_listen_help": "Las flechas son sugerencias. Escucha el original o edita los subtítulos."
   }
 }
