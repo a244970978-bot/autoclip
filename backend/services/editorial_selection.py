@@ -146,7 +146,7 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None,
         raise CaptionError('analysis_no_cues')
     count = len(sections)
     done = 0
-    total = 4*count + 2*_synthesis_calls(count) + 1 + MAX_REVIEW*6 + 20
+    total = 4*count + 2*_synthesis_calls(count) + 1 + MAX_REVIEW*8 + 20
 
     def invoke(stage, instruction, payload, schema, max_tokens):
         nonlocal done

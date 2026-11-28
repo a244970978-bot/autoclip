@@ -1,6 +1,7 @@
 'use strict';
 // No dependencies, remote assets, analytics or provider calls. All URLs are same-origin.
 const $ = id => document.getElementById(id);
+let requestedPick = null;
 let frameDirty = false, lexChanged = false, auditionEnd = null;
 let messages = {}, language = localStorage.getItem('autoclip-caption-language') || 'zh';
 let current = null, localDraft = null, dirty = false, sourceMode = false, rendered = false;
@@ -58,7 +59,7 @@ async function loadProject(pid) {
   clearTimeout(pollTimer);
   const project = await api(`/api/projects/${pid}`, null, 'GET');
   if (request !== projectLoad) return;
-  current = project; frameDirty = false; lexChanged = false;
+  current = project; requestedPick = null; frameDirty = false; lexChanged = false;
   startingOneClick = false; oneClickRequest = null; oneClickResult = null; activePreview = null; previewRequest = null;
   approvalTarget = null; detailChoice = null; drawCandidateChoices();
   chapterState = null; chapterKey = null; $('smartStart').value = ''; $('smartEnd').value = '';
@@ -159,7 +160,7 @@ function updateTrack() {
 }
 function updateFraming(v, scene, apply, editable) {
   const stage = $('stage'), picture = $('picture'), controls = $('frameControls');
-  controls.hidden = !editable || !!activePreview?.director;
+  controls.hidden = !editable || !!activePreview?.director || !!detailChoice?.primary;
   if (!v.videoWidth || !v.videoHeight || !stage.clientWidth) return;
   const fit = Math.min(stage.clientWidth/v.videoWidth, stage.clientHeight/v.videoHeight);
   let z = apply ? scene?.punch || 1 : 1;
@@ -196,6 +197,11 @@ function updateCaption() {
   } else {
     $('clock').textContent = `${time(v.currentTime)} s${!sourceMode && !rendered && scene ? ` · ${sceneIndex + 1}/${draft.scenes.length}` : ''}`;
   }
+}
+// Animation frames are throttled when hidden. Never let source audio continue
+// across an edit while the preview clock is suspended. Resuming is explicit.
+function pauseHiddenPreview(force = false) {
+  if (showingPreview() && (force || document.hidden)) $('video').pause();
 }
 function tick() {
   const v = $('video');
@@ -244,6 +250,25 @@ function reportChoices(report) {
   const byId = new Map(report.chapters.map(choice => [choice.id, choice]));
   return report.previewable.map(id => byId.get(id)).filter(Boolean);
 }
+// Never infer a first choice from list order, an old report, or an optional camera variant.
+function primaryPick(report) {
+  const pick = report?.primary_pick;
+  if (!pick || pick.basis !== 'whole_transcript_hook_v1' || pick.camera !== 'source_frame'
+      || report.reading?.coverage?.complete !== true || !report.previewable?.includes(pick.chapter_id)) return null;
+  const choice = report.chapters.find(c => c.id === pick.chapter_id);
+  return choice?.mode === 'hook_first' && choice.second_pass?.passed === true ? pick : null;
+}
+function nextPickHref(jobId, pick) {
+  if (!pick || !requestedPick || requestedPick.project !== current.id) return null;
+  const job = current.jobs.find(j => j.id === requestedPick.job);
+  if (jobId !== requestedPick.job && job?.one_click_next !== jobId) return null;
+  requestedPick = null;
+  return candidateHref(current.id, jobId, pick.chapter_id) + '?play=1';
+}
+function choiceDuration(choice) {
+  if (!choice.scenes?.length) return '';
+  return clockLabel(choice.scenes.reduce((n, s) => n + Math.max(1,Math.round((s.end-s.start)/(s.tempo||1)*30))/30, 0));
+}
 function selectionUnverified(report) {
   const selection = report?.selection;
   if (report?.analysis_version !== 'editorial_v2' || report.reading?.coverage?.complete !== true
@@ -278,7 +303,7 @@ function drawCoverage() {
 function drawCandidateChoices() {
   $('candidateList').replaceChildren();
   const result = oneClickResult, choices = result?.choices || [];
-  const report = result?.report;
+  const report = result?.report, pick = primaryPick(report);
   const legacy = report?.analysis_version === 'editorial_v1';
   $('candidateHeading').textContent = t(legacy ? 'legacy_candidates' : 'one_click_candidates');
   const countKnown = !!report && !legacy && report.reading?.coverage?.complete === true && !selectionUnverified(report);
@@ -287,19 +312,22 @@ function drawCandidateChoices() {
   $('candidatePicker').hidden = !choices.length;
   for (const [i, choice] of choices.entries()) {
     const item = document.createElement('li');
+    const primary = pick?.chapter_id === choice.id;
+    if (primary) item.className = 'primary-choice';
     const link = document.createElement('a');
-    link.href = candidateHref(current.id, result.jobId, choice.id);
+    link.href = candidateHref(current.id, result.jobId, choice.id) + '?play=1';
     const top = document.createElement('div'); top.className = 'clip-card-top';
     const number = text('span', `${t('clip_label')} ${String(i + 1).padStart(2, '0')}`); number.className = 'clip-number';
-    top.append(number, text('span', `${rangeLabel(choice)} · ${t(choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`));
+    if (primary) top.append(text('strong', t('primary_badge')));
+    const duration = choiceDuration(choice);
+    top.append(number, text('span', `${t('source_range')} ${rangeLabel(choice)} · ${t(choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`));
+    if (duration) top.append(text('span', t('preview_length') + ' · ' + duration));
     if (choice.second_pass?.passed) top.append(text('strong', t('second_pass')));
     link.append(top, text('h3', choice.title));
     if (choice.selection?.reason) link.append(text('p', choice.selection.reason));
     const open = text('span', `${t('open_clip')} →`); open.className = 'clip-open';
     link.append(open); item.append(link);
-    if(report.director_ready?.includes(choice.id)){
-      const alt=text('a',t('director_open')+' →');alt.href=candidateHref(current.id,result.jobId,choice.id)+'?director=1&play=1';item.append(alt);
-    } $('candidateList').append(item);
+    $('candidateList').append(item);
   }
   drawCoverage();
 }
@@ -334,8 +362,37 @@ function drawEvidence(choice, legacy) {
 }
 function drawDetail() {
   if (!detailChoice || !activePreview) return;
-  const {choice, rank, legacy} = detailChoice;
+  const {choice, rank, legacy, primary, pick, other} = detailChoice;
   $('detailIndex').textContent = `${t('clip_label')} ${String(rank + 1).padStart(2, '0')} · ${t(activePreview.director ? 'director_open' : choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`;
+  const brief = $('primaryBrief');
+  brief.replaceChildren(); brief.hidden = !primary;
+  if (primary) {
+    $('detailIndex').textContent = t('primary_badge') + ' · ' + $('detailIndex').textContent;
+    brief.append(text('strong', t('selection_heading')), text('p', choice.selection.reason));
+    const comparison = {model:'final_comparison_edits', only_eligible:'final_comparison_only'};
+    brief.append(text('p', t(comparison[pick?.final_comparison] || 'final_comparison_topic_order')));
+    if (choice.selection.payoff) brief.append(text('p', t('selection_payoff') + ' · ' + choice.selection.payoff));
+    for (const key of ['claim','support','closing']) {
+      const unit = choice.selection.evidence?.[key];
+      if (!unit?.quote) continue;
+      const line = text('p','');
+      line.append(text('strong', t('evidence_' + key) + ' · ' + rangeLabel(unit) + '　'), text('span', unit.quote));
+      brief.append(line);
+    }
+    if (other?.selection?.reason) {
+      const compare = document.createElement('details');
+      compare.append(text('summary', t('comparison_other')),
+        text('p', other.title + ' · ' + t(other.mode === 'hook_first' ? 'hook_first' : 'source_order') + ' · ' + other.selection.reason));
+      // Only show concrete rubric differences. A peer may be equally strong on every axis.
+      for (const key of ['evidence', 'payoff', 'independence', 'relevance', 'novelty']) {
+        const a = choice.selection.criteria?.[key], b = other.selection.criteria?.[key];
+        if (!Number.isInteger(a) || !Number.isInteger(b) || a <= b) continue;
+        compare.append(text('p', t('criterion_' + key) + ' · ' + choice.title + ' ' + a + '/2 · ' + other.title + ' ' + b + '/2'));
+        break;
+      }
+      brief.append(compare);
+    }
+  }
   $('detailTitle').textContent = choice.title;
   $('detailMeta').textContent = `${current.name} · ${t('source_range')} ${rangeLabel(choice)} · ${t('preview_length')} ${clockLabel(activePreview.track.duration)}`;
   document.title = `${choice.title} · AutoClip`;
@@ -350,7 +407,7 @@ function drawDetail() {
     order.append(line);
   }
   const notes = $('cutAudit'); notes.replaceChildren();
-  if (activePreview.director) {
+  if (activePreview.director || activePreview.relisten?.length) {
     const info=text('section',''); info.append(text('h3',t('director_listen')));
     for(const n of activePreview.relisten || []) {
       const row=text('p',clockLabel(n.start)+' · '+n.before+(n.after?' → '+n.after:''));
@@ -365,7 +422,8 @@ function drawDetail() {
         if(field){field.focus();field.select();}
       };row.append(edit);info.append(row);
     }
-    info.append(text('small',t('director_listen_help')));notes.append(info);return;
+    info.append(text('small',t('director_listen_help')));notes.append(info);
+    if (activePreview.director) return;
   }
   if (choice.second_pass?.passed) notes.append(text('strong', t('second_pass')+' · '+t('pauses')+' '+choice.second_pass.pause+' · '+t('omit_filler')+' '+choice.second_pass.filler));
   const pauses = choice.removed_silence || [], omissions = choice.dropped || [];
@@ -402,11 +460,14 @@ async function loadDetail(jobId, chapterId) {
     const timing = [0];
     for (const scene of preview.draft.scenes) timing.push(timing.at(-1) + Math.max(1,Math.round((scene.end-scene.start)/(scene.tempo||1)*30))/30);
     activePreview = {...preview, timing};
-    detailChoice = {choice: choices[rank], rank, legacy: analysis.analysis_version === 'editorial_v1'};
+    const pick = primaryPick(analysis), choice = choices[rank];
+    const primary = !preview.director && pick?.chapter_id === chapterId;
+    detailChoice = {choice, rank, legacy: analysis.analysis_version === 'editorial_v1', primary, pick,
+      other: primary ? choices.find(c => c.id !== chapterId && c.selection?.reason) : null};
     $('detailStatus').textContent = '';
     $('detailContent').hidden = $('clipStudio').hidden = $('clipAudit').hidden = $('previewDisclaimer').hidden = false;
     drawDetail(); showPlan(activePreview.draft);
-    if (params.get('play') === '1') {
+    if (params.get('play') === '1' && !document.hidden) {
       $('stage').scrollIntoView({block:'center'});
       $('video').play().catch(() => $('play').focus({preventScroll:true}));
     }
@@ -427,6 +488,8 @@ async function loadOneClickResult(job) {
     if (!stillCurrent()) return;
     if (analysis?.job_id !== job.id || !Array.isArray(analysis.previewable)) throw new Error('not_found');
     oneClickResult = {jobId: job.id, choices: reportChoices(analysis), report: analysis};
+    const next = nextPickHref(job.id, primaryPick(analysis));
+    if (next && !hasChanges() && !$('editor').open) window.location.assign(next);
   } catch (error) {
     if (stillCurrent()) oneClickResult = {jobId: job.id, error: error.message};
   } finally {
@@ -455,6 +518,7 @@ function updateOneClick(active) {
       else if (report.analysis_version === 'editorial_v1') status = t('legacy_notice');
       else if (report.reading?.coverage?.complete !== true) status = t('reading_incomplete_notice');
       else if (selectionUnverified(report)) status = t('selection_unverified');
+      else if (Object.hasOwn(report, 'primary_pick') && !primaryPick(report) && choices.length) status = t('no_primary_pick');
       else status = t(choices.length ? 'one_click_ready' : 'no_usable_clips');
     } else {
       status = t('加载中');
@@ -470,8 +534,9 @@ async function startOneClick() {
   $('error').textContent = '';
   startingOneClick = true; updateOneClick(current.jobs.find(isActive));
   try {
-    await api(`/api/projects/${pid}/one-click`);
+    const {job} = await api(`/api/projects/${pid}/one-click`);
     if (projectLoad !== load) return;
+    requestedPick = job?.id ? {project:pid, job:job.id} : null;
     oneClickRequest = null; oneClickResult = null; clearPreview(); drawCandidateChoices();
     const fresh = await api(`/api/projects/${pid}`, null, 'GET');
     if (projectLoad === load) current = fresh;
@@ -833,6 +898,9 @@ async function start() {
   $('video').addEventListener('ended', () => {
     if (showingPreview()) { previewEnded = true; updateCaption(); updatePreviewControls(); }
   });
+  document.addEventListener('visibilitychange', () => pauseHiddenPreview());
+  window.addEventListener('pagehide', () => pauseHiddenPreview(true));
+  $('video').addEventListener('play', () => pauseHiddenPreview());
   $('video').addEventListener('loadedmetadata', () => {
     const scene = current && viewedDraft().scenes[sceneIndex];
     if (scene && !sourceMode && !rendered) $('video').currentTime = scene.start;

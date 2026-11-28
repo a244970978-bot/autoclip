@@ -574,3 +574,34 @@ def test_fixed_speaker_cut_and_pace_use_shared_media_and_caption_clocks(workspac
         wav=np.frombuffer(subprocess.check_output([get_ffmpeg_path(),'-v','error','-ss',str(at),'-i',str(v),
             '-t','0.5','-ac','1','-ar','16000','-f','f32le','-']),'<f4')
         assert abs(np.argmax(abs(np.fft.rfft(wav)))*16000/len(wav)-400)<7
+
+
+def test_primary_pick_requires_final_review_moved_hook_and_full_file(workspace, project, v2_selection):
+    from backend.services.editorial_polish import reviewed_order_hash
+    jid, original, path = v2_selection
+    pid = project['id']
+    report = deepcopy(original)
+    assert workspace.analysis(pid, jid).get('primary_pick') is None  # never upgrade legacy reviews
+    report['polish_version'] = 'polish_2'
+    for c in report['chapters']:
+        c['second_pass'] = dict(version='polish_2', passed=True, clean_body=True,
+                                edit_hash=reviewed_order_hash(c['scenes']))
+    path.write_text(json.dumps(report))
+    data = workspace.analysis(pid, jid)
+    assert data['primary_pick'] == dict(chapter_id='T01', basis='whole_transcript_hook_v1',
+                                        compared=2, eligible_hooks=1, camera='source_frame', final_comparison='only_eligible')
+    assert data['recommended'] == data['previewable'][0] == 'T01'
+    # A persisted heuristic framing or an old sidecar is not speaking-person evidence.
+    c = report['chapters'][1]
+    c['scenes'][0].update(punch=2.2, focus_x=.8, focus_y=.5)
+    path.write_text(json.dumps(report))
+    assert all(s['punch']==1 for s in workspace.candidate_preview(pid,jid,'T01')['draft']['scenes'])
+    c['second_pass']['edit_hash'] = '0'*64
+    path.write_text(json.dumps(report))
+    assert workspace.analysis(pid,jid)['primary_pick'] is None
+    assert workspace.analysis(pid,jid)['recommended'] is None
+    assert workspace.analysis(pid,jid)['previewable']==['T02']
+    c['second_pass']['edit_hash'] = reviewed_order_hash(c['scenes'])
+    report['scope'][1] -= .01
+    path.write_text(json.dumps(report))
+    assert workspace.analysis(pid,jid)['primary_pick'] is None

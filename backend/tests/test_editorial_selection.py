@@ -229,7 +229,9 @@ def test_review_must_clear_body_before_opening_and_failure_rechecks_reverted_bod
 
     fixture = FixtureModel(checks=checks)
     chapter, = fixture.run(1)['chapters']
-    assert [s for s, _ in fixture.events][-5:] == ['body', 'body_review', 'body_review', 'hook', 'review']
+    assert [s for s, _ in fixture.events][-6:] == ['body', 'body_review', 'body_review', 'hook', 'review', 'hook']
+    # When the chooser repeats the rejected opening, the worker returns to the approved body.
+    assert fixture.for_stage('hook')[-1]['rejected_opening'] not in fixture.for_stage('hook')[-1]['hook_options']
     rejected, fallback = fixture.for_stage('body_review')
     assert rejected['deleted'] and not fallback['deleted']
     assert chapter['dropped'] == []
@@ -331,3 +333,24 @@ def test_one_invalid_read_retries_the_same_core_without_duplicating_coverage():
         'segments_total': 2, 'segments_read': 2, 'segments_screened': 2,
     }
     assert result['selection']['eligible'] == 2 and result['failed_windows'] == 0
+
+
+def test_rejected_hook_can_be_replaced_only_by_a_separately_reviewed_distinct_hook():
+    class TwoOpenings(FixtureModel):
+        def __call__(self, system, payload, **kwargs):
+            if payload['stage'] == 'hook' and 'rejected_opening' in payload:
+                self.events.append(('hook', payload))
+                assert payload['rejected_opening'] not in payload['hook_options']
+                return {'hook': payload['hook_options'][0]}
+            return super().__call__(system, payload, **kwargs)
+    attempts = []
+    def review(stage, payload):
+        if stage != 'review':
+            return True
+        attempts.append(payload['edit'][0])
+        return len(attempts) == 2
+    fixture = TwoOpenings(checks=review)
+    result = fixture.run(1)['chapters'][0]
+    assert result['mode'] == 'hook_first' and len(attempts) == 2 and attempts[0] != attempts[1]
+    assert result['editorial_checks']['clean_body_confirmed']
+    assert result['editorial_checks']['hook_choice'] == 'replacement_after_review'

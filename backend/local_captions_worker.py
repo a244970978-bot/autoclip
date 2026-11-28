@@ -76,13 +76,19 @@ def main():
             with local_model(task_path.parent / 'model-runtime.log') as call:
                 chapters = task.get('polish_input') or select_edits(data['cues'], task['scope'], data['info']['duration'],
                                         grounded_calls(call, data['cues']), measure, progress, prior_reading=prior_reading)
-                from backend.services.editorial_polish import polish_report, portrait
+                from backend.services.editorial_polish import polish_report
+                from backend.services.local_captions import CaptionWorkspace
+                from backend.services.primary_relisten import write_notes
                 with project_cancellation.bind(data['id']):
+                    # A visible face is not evidence of a speaker. The ordinary
+                    # one-click path has no portrait or director-variant side effects.
                     chapters = polish_report(chapters, data['cues'], measure, call,
-                                             lambda s: portrait(video,s,project_cancellation.run), progress)
-                    from backend.services.director_builder import make_one
-                    chapters['director_pick'] = make_one(chapters, data, task_path.parent, video, call,
-                                                        project_cancellation.run, progress)
+                                             lambda _span: {}, progress)
+                    pick = CaptionWorkspace.primary_pick(data, chapters)
+                    if pick:
+                        winner = next(c for c in chapters['chapters'] if c['id'] == pick['chapter_id'])
+                        progress(0, 1, 'polish')
+                        write_notes(task_path.parent, data, job['id'], winner, video, project_cancellation.run)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)

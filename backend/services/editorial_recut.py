@@ -358,6 +358,29 @@ def _refine(candidate, cues, ids, scope, duration, pauses, invoke, *, verify_bod
         if _passes(reorder_checks):
             return finish(attempt, 'hook_accepted', reorder_checks)
         warnings.append('editorial_reorder_rejected')
+        # For a grounded full-transcript edit, give a failed *join* one
+        # different opening, not another vote on the identical timeline.
+        if verify_body and reorder_checks is not None:
+            first = [s for s in attempt['scenes'] if s['role'] == 'hook']
+            rejected = (first[0]['first'], first[-1]['last'])
+            # A shifted boundary of the same line is not a new opening.
+            other = {span: v for span, v in options.items()
+                     if ids[span[1]] < ids[rejected[0]] or ids[span[0]] > ids[rejected[1]]}
+            if other:
+                payload = {**kept, 'rejected_opening': list(rejected),
+                           'suggested_hooks': [v for v in suggestions if tuple(v['span']) in other],
+                           'hook_options': [list(s) for s in other]}
+                next_open = invoke('hook', HOOK_RETRY + '前一条重排没通过；可以换另一句，也可以不前置。',
+                                   payload, HOOK_SCHEMA, 68)
+                span = next_open.get('hook') if isinstance(next_open, dict) else None
+                if isinstance(span, list) and len(span) == 2 and all(isinstance(s, str) for s in span):
+                    alternative = other.get(tuple(span))
+                    if alternative is not None:
+                        alternative = trim(alternative)
+                        alt_checks = reviewed(alternative)
+                        if _passes(alt_checks):
+                            hook_choice, reorder_checks = 'replacement_after_review', alt_checks
+                            return finish(alternative, 'hook_accepted', alt_checks)
 
     checks = body_checks if verify_body else reviewed(trimmed_body)
     if _passes(checks):

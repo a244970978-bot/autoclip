@@ -1,21 +1,32 @@
 """Second pass on the actual retained cue order; never use transcript text as audio timing."""
+import hashlib
+import json
 import math
 import re
 from pathlib import Path
 from subprocess import SubprocessError
 
+from backend.services.local_captions import CaptionError
 from backend.services.editorial_recut import (
     CHECK_KEYS, QUESTION_END, REVIEW, REVIEW_SCHEMA, SYSTEM, _array, _object, _review_payload, _trim_pauses,
 )
 
 PURE = re.compile(r'[嗯啊呃哦额唔]{1,3}[，。,.…]?\Z')
 REPLY = re.compile(r'[吗呢么嘛?？][？?。！!」”]*$')
-VERSION = 'polish_1'
+VERSION = 'polish_2'
+
+
+def reviewed_order_hash(scenes):
+    # Stamp the actual order, selected source cues and exact cut boundaries.
+    values = [[s[k] for k in ('id', 'first', 'last', 'start', 'end', 'role')] for s in scenes]
+    return hashlib.sha256(json.dumps(values, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
 def invoke(call, system, payload, schema):
     try:
         return call(system, payload, schema=schema, max_tokens=180)
+    except CaptionError:
+        raise
     except (ValueError, TimeoutError):
         return None
 
@@ -79,13 +90,32 @@ def refine_clip(c, cues, ids, quiet, call):
         v = invoke(call, REVIEW+'这是二检：读最终顺序。特别注意误删语气回应、主题跳转或同一句被拆断。不要从时间推断听感。',
                    payload, REVIEW_SCHEMA)
         return isinstance(v, dict) and all(v.get(k) is True for k in CHECK_KEYS)
-    good = verify(edited)
+    def verify_both(p):
+        # Filler/quiet edits can change the approved body. Verify that actual body
+        # in source order before checking the same surviving speech with its hook moved.
+        moved = p.get('mode') == 'hook_first'
+        body_ok = False
+        if moved:
+            ordered = sorted(p['scenes'], key=lambda s: s['start'])
+            original = dict(p, mode='source_order', scenes=[
+                dict(scene, role='close' if i == len(ordered) - 1 else 'body')
+                for i, scene in enumerate(ordered)])
+            body_ok = verify(original)
+            if not body_ok:
+                return False, False
+        final_ok = verify(p)
+        return (body_ok if moved else final_ok), final_ok
+
+    body_ok, good = verify_both(edited)
     added = len(edited['removed_silence'])
     if not good and (omissions or added):
-        edited, good, omissions, added = dict(c), verify(c), [], 0
+        edited, omissions, added = dict(c), [], 0
+        body_ok, good = verify_both(c)
     else:
         edited['removed_silence'] = c['removed_silence'] + edited['removed_silence']
-    return dict(edited, second_pass={'version':VERSION,'passed':good,'filler':len(omissions),'pause':added},
+    return dict(edited, second_pass={'version': VERSION, 'passed': good, 'clean_body': body_ok,
+                                    'edit_hash': reviewed_order_hash(edited['scenes']) if good else None,
+                                    'filler': len(omissions), 'pause': added},
                 editorial_review='passed' if good else 'needs_review')
 
 
@@ -110,22 +140,13 @@ def polish_report(report, cues, measure, call, frame, progress):
     for n,c in enumerate(eligible):
         progress(n,len(eligible),'polish')
         item = refine_clip(c,cues,ids,quiet,call)
-        # The claim is source-grounded. Frame it only when there is room to
-        # return wide within the same retained shot; never zoom an arbitrary intro.
-        if item['second_pass']['passed']:
-            proof = item['selection']['evidence']['claim']
-            a, b = (proof.get(k) for k in ('start','end'))
-            if isinstance(a,(int,float)) and isinstance(b,(int,float)) and b-a >= 1.2:
-                for idx, shot in enumerate(item['scenes']):
-                    if shot['start'] <= a and b+.32 <= shot['end']:
-                        framing = frame({'start':a, 'end':b})
-                        if framing:
-                            shots = list(item['scenes'])
-                            shots[idx] = dict(shot, **framing, emphasis=[a,b])
-                            item['scenes'] = shots
-                        break
+        # A stable face, or current audio energy, isn't proof of the speaker.
+        # No heuristically cropped shot enters this default edition.
         revised[c['id']] = item
     results = [revised.get(c['id'],c) for c in report['chapters']]
-    ok = [c['id'] for c in results if c.get('second_pass',{}).get('passed') is True]
-    return dict(report, chapters=results, polish_version=VERSION, recommended=next(iter(ok),None),
+    ok = [c for c in results if c.get('second_pass',{}).get('passed') is True]
+    from backend.services.editorial_finalists import rank_finalists
+    final_review = rank_finalists(results, cues, call)
+    # Resolve a recommendation against the full source and subtitle revision at the read boundary.
+    return dict(report, chapters=results, polish_version=VERSION, final_review=final_review, recommended=None,
                 selection=dict(report['selection'],eligible=len(ok)))

@@ -311,7 +311,7 @@ class CaptionWorkspace:
             if not job or report.get('analysis_version') != 'editorial_v2' or not report.get('reading', {}).get('coverage', {}).get('complete'):
                 raise CaptionError('revision_conflict')
             initial = [c for c in report['chapters'] if self._preview_draft(data, report, c) is not None]
-            if not initial or report.get('polish_version'):
+            if not initial or report.get('polish_version') not in (None, 'polish_1'):
                 raise CaptionError('revision_conflict')
             return self._enqueue(data, 'analyze', one_click=True, scope=report['scope'],
                                  polish_input=dict(report, chapters=initial))
@@ -496,11 +496,35 @@ class CaptionWorkspace:
                 if report.get('analysis_version') == 'editorial_v1':
                     choices.sort(key=lambda c: (c['id'] == report.get('recommended'),
                                                 c.get('appeal') if type(c.get('appeal')) is int else 0), reverse=True)
+                pick = self.primary_pick(data, report, choices)
+                report['primary_pick'] = pick
+                if report.get('polish_version') == 'polish_2':
+                    report['recommended'] = pick['chapter_id'] if pick else None
+                    if pick:
+                        choices.sort(key=lambda c: c['id'] != pick['chapter_id'])
                 report['previewable'] = [c['id'] for c in choices]
                 folder=self.path(pid)/'metadata'/('job-'+match['id'])
-                report['director_ready']=[c['id'] for c in choices if
+                report['director_ready']=[] if report.get('polish_version') == 'polish_2' else [c['id'] for c in choices if
                                           (folder/('director-'+c['id']+'.json')).is_file()]
             return report
+
+    @classmethod
+    def primary_pick(cls, data, report, choices=None):
+        """Select a validated final edit; fall back to the full-transcript ranking, not face visibility."""
+        if (report.get('analysis_version') != 'editorial_v2' or report.get('polish_version') != 'polish_2'
+                or not isinstance(report.get('scope'), (tuple,list))
+                or list(report['scope']) != [0, data['info']['duration']]):
+            return None
+        if choices is None:
+            choices = [c for c in report['chapters'] if cls._preview_draft(data, report, c) is not None]
+        moved = [c for c in choices if c['mode'] == 'hook_first']
+        if not moved:
+            return None
+        from backend.services.editorial_finalists import live_order
+        moved, final_comparison = live_order(report.get('final_review'), moved)
+        return {'final_comparison': final_comparison, 'chapter_id': moved[0]['id'],
+                'basis': 'whole_transcript_hook_v1', 'camera': 'source_frame',
+                'eligible_hooks': len(moved), 'compared': len(report['chapters'])}
 
     def _analysis_result(self, data, jid):
         match = next((j for j in reversed(data['jobs']) if j['kind'] == 'analyze'
@@ -554,13 +578,20 @@ class CaptionWorkspace:
                         or not 0 < coverage['segments_total'] == coverage['segments_read'] == coverage['segments_screened']):
                     return None
             pieces = chapter['scenes']
+            strict = report.get('polish_version') == 'polish_2'
+            if strict:
+                from backend.services.editorial_polish import VERSION, reviewed_order_hash
+                second = chapter['second_pass']
+                if (second.get('version') != VERSION or second.get('clean_body') is not True
+                        or second.get('edit_hash') != reviewed_order_hash(pieces)):
+                    return None
             roles = [s['role'] for s in pieces]
             first_body = next((i for i, role in enumerate(roles) if role != 'hook'), 0)
             if (bool(first_body) != moved or roles[-1] != 'close'
                     or any(role not in ('body', 'close') for role in roles[first_body:])):
                 return None
             scenes = [{'id': s['id'], 'start': s['start'], 'end': s['end'],
-                       **{k:s[k] for k in ('punch','focus_x','focus_y','emphasis') if k in s},
+                       **{k:s[k] for k in ('punch','focus_x','focus_y','emphasis') if not strict and k in s},
                        'label': 'smart-' + ('body' if s['role'] == 'close' and i < len(pieces) - 1 else s['role'])}
                       for i, s in enumerate(pieces)]
             d = Draft(id='captions', title='AutoClip', scenes=scenes, subtitles=True,
@@ -614,8 +645,15 @@ class CaptionWorkspace:
                 if draft is not None:
                     from backend.services.local_emphasis import apply_emphasis
                     sidecar = self.path(pid) / 'metadata' / ('job-'+jid) / ('emphasis-'+chapter['id']+'.json')
-                    draft = apply_emphasis(sidecar, data, jid, chapter, draft)
-                    notes=[]
+                    strict = report.get('polish_version') == 'polish_2'
+                    if strict:
+                        if director:
+                            raise CaptionError('not_found')
+                        from backend.services.primary_relisten import safe_notes
+                        notes = safe_notes(sidecar.parent, data, jid, cid)
+                    else:
+                        draft = apply_emphasis(sidecar, data, jid, chapter, draft)
+                        notes = []
                     if director:
                         from backend.services.local_director import read_variant
                         try:

@@ -145,7 +145,14 @@
     "director_method": "方法",
     "director_payoff": "结尾兑现",
     "director_listen": "字幕复听",
-    "director_listen_help": "两次本机复听不是人工听校。箭头表示候选写法，不自动改原话；点播放听原片，点字幕可改。"
+    "director_listen_help": "两次本机复听不是人工听校。箭头表示候选写法，不自动改原话；点播放听原片，点字幕可改。",
+    "primary_badge": "本片首推",
+    "comparison_other": "对照另一条候选的看点",
+    "no_primary_pick": "有可看的候选，但没有一条满足本次全片精华前置首推条件。",
+    "review_material": "核对原话、剪口与字幕",
+    "final_comparison_edits": "已横比候选剪好的开头、支撑原话和收束，选这一条先看。",
+    "final_comparison_topic_order": "按全片选题顺序，从通过正文和前置复审的候选中选出此条；没有对成片做最终横比。",
+    "final_comparison_only": "本轮只有这一条符合正文剪顺、精华前置后仍连贯的首推条件；没有拿它和另一条成片做横比。"
   },
   "tr": {
     "播放成片": "Dışa aktarılan videoyu oynat",
@@ -293,7 +300,14 @@
     "director_method": "Yöntem",
     "director_payoff": "Sonuç",
     "director_listen": "Altyazıyı dinle",
-    "director_listen_help": "Oklar öneridir. Özgün kaydı dinleyin veya altyazıyı düzenleyin."
+    "director_listen_help": "Oklar öneridir. Özgün kaydı dinleyin veya altyazıyı düzenleyin.",
+    "primary_badge": "İlk tercih",
+    "comparison_other": "Seçilen başka bir kliple karşılaştır",
+    "no_primary_pick": "Önizlemeler var, ancak hiçbiri vurucu sözün başa taşındığı birinci tercih ölçütlerini karşılamadı.",
+    "review_material": "Alıntıları, kesimleri ve altyazıları incele",
+    "final_comparison_edits": "Kurgulanmış açılışlar, destekleyici alıntılar ve kapanışlar karşılaştırılarak seçildi.",
+    "final_comparison_topic_order": "Vurucu sözü başa alınmış ve incelemeden geçmiş kurgular arasından tüm videonun konu sırasına göre seçildi; kurguların son karşılaştırması yapılmadı.",
+    "final_comparison_only": "Hem ana bölüm hem de başa taşınan açılış incelemesini geçen tek kurgu bu; karşılaştırılabilecek başka uygun son kurgu yoktu."
   },
   "ja": {
     "播放成片": "完成動画を再生",
@@ -441,7 +455,14 @@
     "director_method": "方法",
     "director_payoff": "結び",
     "director_listen": "字幕の聞き直し",
-    "director_listen_help": "矢印は候補です。元音声を聞いて字幕を修正できます。"
+    "director_listen_help": "矢印は候補です。元音声を聞いて字幕を修正できます。",
+    "primary_badge": "この動画の第一候補",
+    "comparison_other": "別の候補の見どころと比較",
+    "no_primary_pick": "試聴できる候補はありますが、全編から見せ場を冒頭に移した第一候補の条件を満たすものはありません。",
+    "review_material": "原文・カット・字幕を確認",
+    "final_comparison_edits": "編集後の冒頭、根拠となる発言、締めくくりを比較して選びました。",
+    "final_comparison_topic_order": "冒頭を前に移して再確認済みの候補から、動画全体のテーマ順位に従って選びました。完成した編集同士の最終比較はしていません。",
+    "final_comparison_only": "本文と冒頭を前に移した後の確認を両方通過したのはこの編集だけです。比較できる別の完成候補はありませんでした。"
   },
   "de": {
     "播放成片": "Exportiertes Video abspielen",
@@ -589,7 +610,14 @@
     "director_method": "Methode",
     "director_payoff": "Abschluss",
     "director_listen": "Untertitel nachhören",
-    "director_listen_help": "Vorschläge ersetzen keine Prüfung. Original anhören oder Untertitel ändern."
+    "director_listen_help": "Vorschläge ersetzen keine Prüfung. Original anhören oder Untertitel ändern.",
+    "primary_badge": "Erste Wahl",
+    "comparison_other": "Eine weitere Vorauswahl vergleichen",
+    "no_primary_pick": "Vorschauen sind verfügbar, doch kein Clip erfüllt die Anforderungen für die erste Wahl mit vorgezogenem Einstieg.",
+    "review_material": "Originalzitate, Schnitte und Untertitel prüfen",
+    "final_comparison_edits": "Nach einem Vergleich der geschnittenen Einstiege, Belege und Schlüsse ausgewählt.",
+    "final_comparison_topic_order": "Nach der Themenrangfolge des Gesamtvideos unter geprüften Fassungen mit vorgezogenem Einstieg gewählt; kein abschließender Vergleich der Schnitte.",
+    "final_comparison_only": "Nur dieser Schnitt bestand die Prüfung von Hauptteil und vorgezogenem Einstieg; es gab keine weitere geeignete Endfassung zum Vergleich."
   },
   "ru": {
     "播放成片": "Воспроизвести готовое видео",
@@ -737,7 +765,14 @@
     "director_method": "Метод",
     "director_payoff": "Итог",
     "director_listen": "Проверить субтитры",
-    "director_listen_help": "Стрелки отмечают варианты. Прослушайте оригинал или исправьте субтитры."
+    "director_listen_help": "Стрелки отмечают варианты. Прослушайте оригинал или исправьте субтитры.",
+    "primary_badge": "Первый выбор",
+    "comparison_other": "Сравнить с другим отобранным фрагментом",
+    "no_primary_pick": "Предпросмотры доступны, но ни один фрагмент не прошёл отбор на первое место с ключевой фразой в начале.",
+    "review_material": "Проверить цитаты, склейки и субтитры",
+    "final_comparison_edits": "Выбрано после сравнения смонтированных начал, подтверждающих цитат и концовок.",
+    "final_comparison_topic_order": "Выбрано по рейтингу тем всей записи среди проверенных вариантов с ключевой фразой в начале. Итогового сравнения монтажа не было.",
+    "final_comparison_only": "Только этот вариант прошёл проверку основной части и перенесённого начала; другого подходящего итогового монтажа для сравнения не было."
   },
   "pt": {
     "播放成片": "Reproduzir vídeo exportado",
@@ -885,7 +920,14 @@
     "director_method": "Método",
     "director_payoff": "Fecho",
     "director_listen": "Reouvir legendas",
-    "director_listen_help": "As setas indicam sugestões. Ouça o original ou edite as legendas."
+    "director_listen_help": "As setas indicam sugestões. Ouça o original ou edite as legendas.",
+    "primary_badge": "Primeira escolha",
+    "comparison_other": "Comparar outro trecho selecionado",
+    "no_primary_pick": "Há prévias, mas nenhuma atende aos critérios da primeira escolha com o gancho antecipado.",
+    "review_material": "Conferir citações, cortes e legendas",
+    "final_comparison_edits": "Escolhido após comparar as aberturas editadas, as citações de apoio e os finais.",
+    "final_comparison_topic_order": "Escolhido pela ordem dos temas do vídeo entre os cortes revisados com o gancho antecipado; sem comparação final das edições.",
+    "final_comparison_only": "Só este corte passou na revisão do corpo e da abertura antecipada; não havia outra edição apta para comparar."
   },
   "en": {
     "播放成片": "Play exported video",
@@ -1033,7 +1075,14 @@
     "director_method": "Method",
     "director_payoff": "Payoff",
     "director_listen": "Check the transcript",
-    "director_listen_help": "Two local passes are not human verification. Arrows are suggestions. Listen to the source or edit captions."
+    "director_listen_help": "Two local passes are not human verification. Arrows are suggestions. Listen to the source or edit captions.",
+    "primary_badge": "First pick",
+    "comparison_other": "Compare another shortlisted clip",
+    "no_primary_pick": "Previews are available, but none qualified as the full-video hook-first pick.",
+    "review_material": "Review source quotes, cuts and captions",
+    "final_comparison_edits": "Selected after comparing the edited openings, supporting quotes and endings.",
+    "final_comparison_topic_order": "Selected in full-video topic order among reviewed hook-first cuts; no final comparison of the edits.",
+    "final_comparison_only": "Only this cut passed both the body and moved-opening reviews; there was no other eligible final edit to compare."
   },
   "fr": {
     "播放成片": "Lire la vidéo exportée",
@@ -1181,7 +1230,14 @@
     "director_method": "Méthode",
     "director_payoff": "Conclusion",
     "director_listen": "Réécouter les sous-titres",
-    "director_listen_help": "Les suggestions ne remplacent pas une vérification. Écouter ou corriger."
+    "director_listen_help": "Les suggestions ne remplacent pas une vérification. Écouter ou corriger.",
+    "primary_badge": "Notre premier choix",
+    "comparison_other": "Comparer un autre extrait retenu",
+    "no_primary_pick": "Des aperçus sont disponibles, mais aucun ne remplit les critères du premier choix avec accroche déplacée.",
+    "review_material": "Vérifier les citations, les coupes et les sous-titres",
+    "final_comparison_edits": "Choix issu de la comparaison des accroches montées, des citations à l’appui et des conclusions.",
+    "final_comparison_topic_order": "Choix selon le classement des sujets de toute la vidéo parmi les montages validés avec accroche déplacée, sans comparaison finale des montages.",
+    "final_comparison_only": "Seul ce montage a passé les contrôles du corps et de l’accroche déplacée ; il n’y avait pas d’autre montage admissible à comparer."
   },
   "ko": {
     "播放成片": "완성 영상 재생",
@@ -1329,7 +1385,14 @@
     "director_method": "방법",
     "director_payoff": "마무리",
     "director_listen": "자막 다시 듣기",
-    "director_listen_help": "화살표는 제안입니다. 원음을 듣거나 자막을 수정하세요."
+    "director_listen_help": "화살표는 제안입니다. 원음을 듣거나 자막을 수정하세요.",
+    "primary_badge": "이 영상의 첫 추천",
+    "comparison_other": "다른 후보의 볼거리와 비교",
+    "no_primary_pick": "미리보기는 있지만 핵심 발언을 앞으로 옮긴 전체 영상의 첫 추천 기준을 충족한 후보는 없습니다.",
+    "review_material": "원문, 편집점 및 자막 확인",
+    "final_comparison_edits": "편집한 도입부, 뒷받침하는 발언, 마무리를 비교해 선정했습니다.",
+    "final_comparison_topic_order": "핵심 발언을 앞으로 옮겨 검토를 통과한 후보 중 전체 영상의 주제 순위에 따라 골랐습니다. 편집본 간 최종 비교는 하지 않았습니다.",
+    "final_comparison_only": "본문과 핵심 발언을 앞으로 옮긴 도입부 검토를 모두 통과한 편집본은 이 하나뿐이어서 비교할 다른 최종 편집본이 없었습니다."
   },
   "zh-TW": {
     "播放成片": "播放匯出影片",
@@ -1477,7 +1540,14 @@
     "director_method": "方法",
     "director_payoff": "結尾回應",
     "director_listen": "字幕複聽",
-    "director_listen_help": "箭頭為本機辨識建議，不會自動覆寫。可播放原音或編輯字幕。"
+    "director_listen_help": "箭頭為本機辨識建議，不會自動覆寫。可播放原音或編輯字幕。",
+    "primary_badge": "本片首選",
+    "comparison_other": "比較另一段候選的看點",
+    "no_primary_pick": "有可預覽的片段，但沒有一段符合本次全片精華前置首選條件。",
+    "review_material": "核對原話、剪接與字幕",
+    "final_comparison_edits": "已比較候選剪輯的開頭、佐證原話與收尾，建議先看這段。",
+    "final_comparison_topic_order": "依全片選題順序，從通過正文與開頭前置複核的候選中選出這段；未做成片的最終比較。",
+    "final_comparison_only": "本輪只有這段符合正文流暢、亮點前置後仍連貫的首選條件，沒有另一段符合條件的成片可供比較。"
   },
   "vi": {
     "播放成片": "Phát video thành phẩm",
@@ -1625,7 +1695,14 @@
     "director_method": "Phương pháp",
     "director_payoff": "Kết luận",
     "director_listen": "Nghe lại phụ đề",
-    "director_listen_help": "Mũi tên là gợi ý. Nghe âm thanh gốc hoặc sửa phụ đề."
+    "director_listen_help": "Mũi tên là gợi ý. Nghe âm thanh gốc hoặc sửa phụ đề.",
+    "primary_badge": "Ưu tiên xem",
+    "comparison_other": "So sánh với một đoạn khác trong danh sách",
+    "no_primary_pick": "Có bản xem trước nhưng chưa có đoạn nào đạt tiêu chí đề xuất đầu tiên với câu nổi bật được đưa lên đầu.",
+    "review_material": "Kiểm tra lời gốc, điểm cắt và phụ đề",
+    "final_comparison_edits": "Chọn sau khi so sánh phần mở đầu đã dựng, lời trích hỗ trợ và phần kết.",
+    "final_comparison_topic_order": "Chọn theo thứ tự chủ đề của toàn bộ video trong các bản dựng đã duyệt có câu nổi bật đưa lên đầu; chưa so sánh cuối cùng giữa các bản dựng.",
+    "final_comparison_only": "Chỉ bản này vượt qua cả khâu duyệt phần thân và câu mở đầu chuyển lên trước; không có bản dựng đủ điều kiện nào khác để so sánh."
   },
   "id": {
     "播放成片": "Putar video hasil ekspor",
@@ -1773,7 +1850,14 @@
     "director_method": "Metode",
     "director_payoff": "Penutup",
     "director_listen": "Periksa subtitel",
-    "director_listen_help": "Panah menandai saran. Dengarkan sumber atau sunting subtitel."
+    "director_listen_help": "Panah menandai saran. Dengarkan sumber atau sunting subtitel.",
+    "primary_badge": "Pilihan utama",
+    "comparison_other": "Bandingkan dengan cuplikan terpilih lainnya",
+    "no_primary_pick": "Pratinjau tersedia, tetapi tidak ada yang memenuhi syarat sebagai pilihan utama dengan kutipan terbaik di awal.",
+    "review_material": "Periksa kutipan asli, potongan, dan takarir",
+    "final_comparison_edits": "Dipilih setelah membandingkan pembuka hasil suntingan, kutipan pendukung, dan penutup.",
+    "final_comparison_topic_order": "Dipilih sesuai urutan topik seluruh video dari potongan yang lolos tinjauan dengan kutipan terbaik di awal; tanpa perbandingan akhir antarsuntingan.",
+    "final_comparison_only": "Hanya suntingan ini yang lolos tinjauan isi dan pembuka yang dipindah ke awal; tidak ada suntingan akhir lain yang memenuhi syarat untuk dibandingkan."
   },
   "es": {
     "播放成片": "Reproducir vídeo exportado",
@@ -1921,6 +2005,13 @@
     "director_method": "Método",
     "director_payoff": "Cierre",
     "director_listen": "Revisar subtítulos",
-    "director_listen_help": "Las flechas son sugerencias. Escucha el original o edita los subtítulos."
+    "director_listen_help": "Las flechas son sugerencias. Escucha el original o edita los subtítulos.",
+    "primary_badge": "Primera opción",
+    "comparison_other": "Comparar otro fragmento seleccionado",
+    "no_primary_pick": "Hay vistas previas, pero ninguna cumple los criterios para ser la primera opción con el gancho adelantado.",
+    "review_material": "Revisar citas, cortes y subtítulos",
+    "final_comparison_edits": "Elegido tras comparar los inicios editados, las citas de apoyo y los cierres.",
+    "final_comparison_topic_order": "Elegido según el orden temático del vídeo entre los cortes revisados con gancho adelantado; sin comparación final de los montajes.",
+    "final_comparison_only": "Solo este corte superó la revisión del cuerpo y del inicio adelantado; no había otro montaje apto para comparar."
   }
 }
