@@ -130,7 +130,14 @@
     "ranking_rubric_only": "本轮仅按编辑规则筛选，未运行模型横比。",
     "ranking_comparative_model": "本轮用模型横向比较了全片所有通过初筛的候选。",
     "ranking_comparative_balanced": "本轮把全片候选按时间均衡分组横比，入围项统一复比，其余保留规则顺序。",
-    "ranking_rubric_fallback": "模型横比未能完成，本轮只按编辑规则排序。"
+    "ranking_rubric_fallback": "模型横比未能完成，本轮只按编辑规则排序。",
+    "shot_zoom": "当前镜头 · 人物远近与位置",
+    "terms": "本片专名词表",
+    "term_help": "每行一个正确名称，或写「错写 => 正名」。勾选建议后保存字幕；保存后需重新生成候选。",
+    "find_terms": "保存词表并查找建议",
+    "second_pass": "二检通过",
+    "second_progress": "正在二检剪口与主题",
+    "ime_terms": "载入搜狗机构名候选"
   },
   "tr": {
     "播放成片": "Dışa aktarılan videoyu oynat",
@@ -263,7 +270,14 @@
     "ranking_rubric_only": "Bu turda model karşılaştırması yapılmadan editoryal ölçütler uygulandı.",
     "ranking_comparative_model": "Model, videonun tamamından ölçütleri geçen adayların tümünü karşılaştırdı.",
     "ranking_comparative_balanced": "Model, zamana göre dengeli grupları ve ardından finale kalanları karşılaştırdı. Diğer adayların sırası ölçütlere göre korundu.",
-    "ranking_rubric_fallback": "Model karşılaştırması tamamlanmadı. Bu turda adaylar yalnızca editoryal ölçütlerle sıralandı."
+    "ranking_rubric_fallback": "Model karşılaştırması tamamlanmadı. Bu turda adaylar yalnızca editoryal ölçütlerle sıralandı.",
+    "shot_zoom": "Plan · yakınlık ve konum",
+    "terms": "Proje sözlüğü",
+    "term_help": "Her satıra ad veya hata => ad yazın. Önerileri seçin, altyazıyı kaydedip klipleri yeniden oluşturun.",
+    "find_terms": "Kaydet ve eşleştir",
+    "second_pass": "İkinci kontrol geçti",
+    "second_progress": "Kesimler ve akış denetleniyor",
+    "ime_terms": "Sogou kurum adlarını yükle"
   },
   "ja": {
     "播放成片": "完成動画を再生",
@@ -396,7 +410,14 @@
     "ranking_rubric_only": "今回はモデル比較を行わず、編集基準で選別しました。",
     "ranking_comparative_model": "基準を満たした動画全体の候補をモデルで比較しました。",
     "ranking_comparative_balanced": "動画内の時間が偏らないように候補を分けて比較し、通過した候補を再比較しました。それ以外は編集基準順です。",
-    "ranking_rubric_fallback": "モデル比較を完了できず、今回は編集基準の順序のみを使いました。"
+    "ranking_rubric_fallback": "モデル比較を完了できず、今回は編集基準の順序のみを使いました。",
+    "shot_zoom": "現在のカット・拡大と位置",
+    "terms": "作品の用語集",
+    "term_help": "各行に正式名または誤記 => 正式名。候補を選んで字幕を保存し、再生成してください。",
+    "find_terms": "用語を保存して照合",
+    "second_pass": "二次確認済み",
+    "second_progress": "つなぎと内容を再確認中",
+    "ime_terms": "Sogou 組織名候補を読み込む"
   },
   "de": {
     "播放成片": "Exportiertes Video abspielen",
@@ -529,7 +550,14 @@
     "ranking_rubric_only": "Dieser Durchlauf nutzte die redaktionellen Kriterien ohne Modellvergleich.",
     "ranking_comparative_model": "Das Modell verglich alle qualifizierten Vorschläge aus dem gesamten Video.",
     "ranking_comparative_balanced": "Das Modell verglich zeitlich ausgewogene Gruppen und danach die Finalisten. Die übrigen Vorschläge blieben nach Kriterien sortiert.",
-    "ranking_rubric_fallback": "Der Modellvergleich wurde nicht abgeschlossen. Die Sortierung folgte nur den redaktionellen Kriterien."
+    "ranking_rubric_fallback": "Der Modellvergleich wurde nicht abgeschlossen. Die Sortierung folgte nur den redaktionellen Kriterien.",
+    "shot_zoom": "Einstellung · Zoom und Position",
+    "terms": "Projektglossar",
+    "term_help": "Ein Name oder Fehler => Name pro Zeile. Vorschläge auswählen, Untertitel speichern, Clips neu erstellen.",
+    "find_terms": "Speichern und abgleichen",
+    "second_pass": "Zweitprüfung bestanden",
+    "second_progress": "Schnitte und Zusammenhang prüfen",
+    "ime_terms": "Sogou-Organisationsnamen laden"
   },
   "ru": {
     "播放成片": "Воспроизвести готовое видео",
@@ -662,7 +690,14 @@
     "ranking_rubric_only": "В этом запуске использовались редакторские критерии без сравнения моделью.",
     "ranking_comparative_model": "Модель сравнила все подходящие варианты из всего видео.",
     "ranking_comparative_balanced": "Модель сравнила группы с равномерным охватом видео, затем их финалистов. Остальные остались в порядке редакторской оценки.",
-    "ranking_rubric_fallback": "Сравнение моделью не завершилось. Варианты упорядочены только по редакторским критериям."
+    "ranking_rubric_fallback": "Сравнение моделью не завершилось. Варианты упорядочены только по редакторским критериям.",
+    "shot_zoom": "Кадр · масштаб и позиция",
+    "terms": "Словарь проекта",
+    "term_help": "Имя или ошибка => имя в каждой строке. Выберите замены, сохраните субтитры и создайте клипы заново.",
+    "find_terms": "Сохранить и найти",
+    "second_pass": "Повторная проверка пройдена",
+    "second_progress": "Проверка склеек и связности",
+    "ime_terms": "Загрузить названия из Sogou"
   },
   "pt": {
     "播放成片": "Reproduzir vídeo exportado",
@@ -795,7 +830,14 @@
     "ranking_rubric_only": "Nesta rodada, foram usados critérios editoriais sem comparação pelo modelo.",
     "ranking_comparative_model": "O modelo comparou todos os candidatos qualificados de todo o vídeo.",
     "ranking_comparative_balanced": "O modelo comparou grupos equilibrados no tempo e depois os finalistas. Os demais mantiveram a ordem dos critérios.",
-    "ranking_rubric_fallback": "A comparação pelo modelo não foi concluída. A ordenação usou apenas os critérios editoriais."
+    "ranking_rubric_fallback": "A comparação pelo modelo não foi concluída. A ordenação usou apenas os critérios editoriais.",
+    "shot_zoom": "Plano · zoom e posição",
+    "terms": "Glossário do projeto",
+    "term_help": "Um nome ou erro => nome por linha. Selecione, salve as legendas e gere novamente.",
+    "find_terms": "Salvar e comparar",
+    "second_pass": "Segunda revisão aprovada",
+    "second_progress": "Revisando cortes e coerência",
+    "ime_terms": "Carregar organizações do Sogou"
   },
   "en": {
     "播放成片": "Play exported video",
@@ -928,7 +970,14 @@
     "ranking_rubric_only": "This run applied the editorial rubric without model comparison.",
     "ranking_comparative_model": "The model compared all qualifying candidates from across the video.",
     "ranking_comparative_balanced": "The model compared time-balanced groups, then compared the finalists. The rest stayed in rubric order.",
-    "ranking_rubric_fallback": "Model comparison did not complete. This run used only the editorial rubric to order the candidates."
+    "ranking_rubric_fallback": "Model comparison did not complete. This run used only the editorial rubric to order the candidates.",
+    "shot_zoom": "Current shot · zoom and focus",
+    "terms": "Project glossary",
+    "term_help": "One name or typo => name per line. Select suggestions, save captions, then regenerate clips.",
+    "find_terms": "Save terms and find matches",
+    "second_pass": "Second review passed",
+    "second_progress": "Checking cuts and flow",
+    "ime_terms": "Load Sogou organization names"
   },
   "fr": {
     "播放成片": "Lire la vidéo exportée",
@@ -1061,7 +1110,14 @@
     "ranking_rubric_only": "Les critères éditoriaux ont été appliqués sans comparaison par le modèle.",
     "ranking_comparative_model": "Le modèle a comparé tous les candidats qualifiés issus de la vidéo entière.",
     "ranking_comparative_balanced": "Le modèle a comparé des groupes équilibrés dans le temps, puis les finalistes. Les autres ont gardé l’ordre des critères.",
-    "ranking_rubric_fallback": "La comparaison par le modèle n’a pas abouti. Seuls les critères éditoriaux ont servi au classement."
+    "ranking_rubric_fallback": "La comparaison par le modèle n’a pas abouti. Seuls les critères éditoriaux ont servi au classement.",
+    "shot_zoom": "Plan · zoom et position",
+    "terms": "Glossaire du projet",
+    "term_help": "Un nom ou erreur => nom par ligne. Sélectionnez, enregistrez les sous-titres puis régénérez les extraits.",
+    "find_terms": "Enregistrer et comparer",
+    "second_pass": "Seconde vérification réussie",
+    "second_progress": "Vérification du montage",
+    "ime_terms": "Charger les organisations de Sogou"
   },
   "ko": {
     "播放成片": "완성 영상 재생",
@@ -1194,7 +1250,14 @@
     "ranking_rubric_only": "이번에는 모델 비교 없이 편집 기준만 적용했습니다.",
     "ranking_comparative_model": "모델이 영상 전체에서 1차 기준을 통과한 후보를 모두 비교했습니다.",
     "ranking_comparative_balanced": "모델이 시간대가 고르게 섞인 그룹을 비교하고 결선 후보를 다시 비교했습니다. 나머지는 편집 기준 순서를 유지했습니다.",
-    "ranking_rubric_fallback": "모델 비교를 완료하지 못해 이번에는 편집 기준으로만 후보를 정렬했습니다."
+    "ranking_rubric_fallback": "모델 비교를 완료하지 못해 이번에는 편집 기준으로만 후보를 정렬했습니다.",
+    "shot_zoom": "현재 장면 · 확대 및 위치",
+    "terms": "프로젝트 용어집",
+    "term_help": "줄마다 이름 또는 오기 => 이름을 적으세요. 제안을 선택하고 자막을 저장한 뒤 다시 생성하세요.",
+    "find_terms": "용어 저장 및 검색",
+    "second_pass": "2차 검토 통과",
+    "second_progress": "편집점과 흐름 검토 중",
+    "ime_terms": "Sogou 기관명 후보 불러오기"
   },
   "zh-TW": {
     "播放成片": "播放匯出影片",
@@ -1327,7 +1390,14 @@
     "ranking_rubric_only": "本輪僅依編輯規則篩選，未執行模型比較。",
     "ranking_comparative_model": "本輪透過模型橫向比較整部影片中通過初篩的所有候選。",
     "ranking_comparative_balanced": "本輪把全片候選依時間均衡分組比較，入圍項目統一複比，其餘保留規則順序。",
-    "ranking_rubric_fallback": "模型比較未能完成，本輪只依編輯規則排序。"
+    "ranking_rubric_fallback": "模型比較未能完成，本輪只依編輯規則排序。",
+    "shot_zoom": "當前鏡頭 · 人物遠近與位置",
+    "terms": "本片專名詞表",
+    "term_help": "每行一個正名，或「誤寫 => 正名」。勾選後儲存字幕並重新產生片段。",
+    "find_terms": "儲存詞表並比對",
+    "second_pass": "二檢通過",
+    "second_progress": "正在複檢剪接與主題",
+    "ime_terms": "載入搜狗機構名候選"
   },
   "vi": {
     "播放成片": "Phát video thành phẩm",
@@ -1460,7 +1530,14 @@
     "ranking_rubric_only": "Lượt này áp dụng tiêu chí biên tập mà không so sánh bằng mô hình.",
     "ranking_comparative_model": "Mô hình đã so sánh mọi đề xuất đạt tiêu chí trên toàn bộ video.",
     "ranking_comparative_balanced": "Mô hình so sánh các nhóm cân bằng theo thời gian rồi so sánh các đề xuất vào vòng cuối. Các đề xuất còn lại giữ thứ tự theo tiêu chí.",
-    "ranking_rubric_fallback": "Chưa hoàn tất so sánh bằng mô hình. Lượt này chỉ xếp theo tiêu chí biên tập."
+    "ranking_rubric_fallback": "Chưa hoàn tất so sánh bằng mô hình. Lượt này chỉ xếp theo tiêu chí biên tập.",
+    "shot_zoom": "Cảnh hiện tại · thu phóng và vị trí",
+    "terms": "Từ điển dự án",
+    "term_help": "Mỗi dòng một tên hoặc lỗi => tên. Chọn gợi ý, lưu phụ đề rồi tạo lại clip.",
+    "find_terms": "Lưu và tìm",
+    "second_pass": "Đạt kiểm tra lần hai",
+    "second_progress": "Đang kiểm tra mạch và điểm cắt",
+    "ime_terms": "Nạp tên tổ chức từ Sogou"
   },
   "id": {
     "播放成片": "Putar video hasil ekspor",
@@ -1593,7 +1670,14 @@
     "ranking_rubric_only": "Proses ini memakai kriteria penyuntingan tanpa perbandingan oleh model.",
     "ranking_comparative_model": "Model membandingkan semua kandidat yang lolos dari seluruh video.",
     "ranking_comparative_balanced": "Model membandingkan kelompok yang merata menurut waktu, lalu para finalis. Kandidat lainnya tetap berurutan menurut kriteria.",
-    "ranking_rubric_fallback": "Perbandingan oleh model tidak selesai. Kandidat diurutkan hanya menurut kriteria penyuntingan."
+    "ranking_rubric_fallback": "Perbandingan oleh model tidak selesai. Kandidat diurutkan hanya menurut kriteria penyuntingan.",
+    "shot_zoom": "Adegan · zoom dan posisi",
+    "terms": "Glosarium proyek",
+    "term_help": "Satu nama atau salah => nama per baris. Pilih saran, simpan subtitel, lalu buat ulang klip.",
+    "find_terms": "Simpan dan cocokkan",
+    "second_pass": "Lolos tinjauan kedua",
+    "second_progress": "Memeriksa potongan dan alur",
+    "ime_terms": "Muat nama organisasi Sogou"
   },
   "es": {
     "播放成片": "Reproducir vídeo exportado",
@@ -1726,6 +1810,13 @@
     "ranking_rubric_only": "En esta ejecución se aplicaron los criterios editoriales sin comparación por el modelo.",
     "ranking_comparative_model": "El modelo comparó todos los candidatos de todo el vídeo que superaron la selección inicial.",
     "ranking_comparative_balanced": "El modelo comparó grupos equilibrados en el tiempo y después a los finalistas. Los demás conservaron el orden por criterios.",
-    "ranking_rubric_fallback": "La comparación por el modelo no se completó. Solo se usaron los criterios editoriales para ordenar los candidatos."
+    "ranking_rubric_fallback": "La comparación por el modelo no se completó. Solo se usaron los criterios editoriales para ordenar los candidatos.",
+    "shot_zoom": "Plano · zoom y posición",
+    "terms": "Glosario del proyecto",
+    "term_help": "Un nombre o error => nombre por línea. Selecciona, guarda los subtítulos y vuelve a generar.",
+    "find_terms": "Guardar y buscar",
+    "second_pass": "Segunda revisión superada",
+    "second_progress": "Revisando cortes e hilo",
+    "ime_terms": "Cargar organizaciones de Sogou"
   }
 }

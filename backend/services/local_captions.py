@@ -299,8 +299,21 @@ class CaptionWorkspace:
             self.idle()
             return self._enqueue(data, 'analyze' if data['cues'] else 'transcribe', one_click=True)
 
+    def polish_latest(self, pid):
+        with self.lock:
+            self.idle()
+            data = self.load(pid)
+            job, report = self._analysis_result(data, None)
+            if not job or report.get('analysis_version') != 'editorial_v2' or not report.get('reading', {}).get('coverage', {}).get('complete'):
+                raise CaptionError('revision_conflict')
+            initial = [c for c in report['chapters'] if self._preview_draft(data, report, c) is not None]
+            if not initial or report.get('polish_version'):
+                raise CaptionError('revision_conflict')
+            return self._enqueue(data, 'analyze', one_click=True, scope=report['scope'],
+                                 polish_input=dict(report, chapters=initial))
+
     def _enqueue(self, data, kind, *, plan_hash=None, approved=False, scope=None,
-                 one_click=False, previous=None):
+                 one_click=False, previous=None, polish_input=None):
         """Queue with self.lock held. A continuation and its link are persisted together."""
         self.idle()
         pid = data['id']
@@ -329,7 +342,7 @@ class CaptionWorkspace:
         path = self.path(pid) / 'metadata' / ('job-' + job['id'])
         path.mkdir(parents=True)
         try:
-            atomic(path / 'task.json', {'project': data, 'job': job, 'track': track, 'scope': scope})
+            atomic(path / 'task.json', {'project': data, 'job': job, 'track': track, 'scope': scope, 'polish_input': polish_input})
             data['jobs'].append(job)
             if previous is not None:
                 previous['one_click_next'] = job['id']
@@ -512,6 +525,8 @@ class CaptionWorkspace:
                 or not isinstance(chapter.get('id'), str)
                 or chapter.get('editorial_review') != 'passed'):
             return None
+        if report.get('polish_version') and chapter.get('second_pass', {}).get('passed') is not True:
+            return None
         moved = chapter.get('mode') == 'hook_first'
         if not moved and (version != 'editorial_v2' or chapter.get('mode') != 'source_order'):
             return None
@@ -538,6 +553,7 @@ class CaptionWorkspace:
                     or any(role not in ('body', 'close') for role in roles[first_body:])):
                 return None
             scenes = [{'id': s['id'], 'start': s['start'], 'end': s['end'],
+                       **{k:s[k] for k in ('punch','focus_x','focus_y') if k in s},
                        'label': 'smart-' + ('body' if s['role'] == 'close' and i < len(pieces) - 1 else s['role'])}
                       for i, s in enumerate(pieces)]
             d = Draft(id='captions', title='AutoClip', scenes=scenes, subtitles=True,

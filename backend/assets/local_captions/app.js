@@ -1,6 +1,7 @@
 'use strict';
 // No dependencies, remote assets, analytics or provider calls. All URLs are same-origin.
 const $ = id => document.getElementById(id);
+let frameDirty = false, lexChanged = false;
 let messages = {}, language = localStorage.getItem('autoclip-caption-language') || 'zh';
 let current = null, localDraft = null, dirty = false, sourceMode = false, rendered = false;
 let sceneIndex = 0, pollTimer = null, captionEdits = new Map(), editorDirty = false;
@@ -49,7 +50,7 @@ async function listProjects(selected) {
   if (selected) $('projects').value = selected;
   return data.projects;
 }
-function hasChanges() { return dirty || editorDirty; }
+function hasChanges() { return dirty || editorDirty || frameDirty || lexChanged; }
 function mayLeave() { return !hasChanges() || window.confirm(t('discard_notice')); }
 async function loadProject(pid) {
   if (!pid) return;
@@ -57,7 +58,7 @@ async function loadProject(pid) {
   clearTimeout(pollTimer);
   const project = await api(`/api/projects/${pid}`, null, 'GET');
   if (request !== projectLoad) return;
-  current = project;
+  current = project; frameDirty = false; lexChanged = false;
   startingOneClick = false; oneClickRequest = null; oneClickResult = null; activePreview = null; previewRequest = null;
   approvalTarget = null; detailChoice = null; drawCandidateChoices();
   chapterState = null; chapterKey = null; $('smartStart').value = ''; $('smartEnd').value = '';
@@ -155,9 +156,24 @@ function updateTrack() {
   updatePreviewControls();
   updateCaption();
 }
+function updateFraming(v, scene, apply, editable) {
+  const stage = $('stage'), picture = $('picture'), controls = $('frameControls');
+  controls.hidden = !editable;
+  if (!v.videoWidth || !v.videoHeight || !stage.clientWidth) return;
+  const fit = Math.min(stage.clientWidth/v.videoWidth, stage.clientHeight/v.videoHeight);
+  const key = [scene?.id, stage.clientWidth, stage.clientHeight, v.videoWidth, v.videoHeight, apply, scene?.punch, scene?.focus_x, scene?.focus_y].join(':');
+  if (picture.dataset.key === key) return;
+  picture.dataset.key = key;
+  picture.style.width = v.videoWidth*fit+'px'; picture.style.height = v.videoHeight*fit+'px';
+  const z = apply ? scene?.punch || 1 : 1, x=scene?.focus_x ?? .5, y=scene?.focus_y ?? .5;
+  v.style.transformOrigin = x*100+'% '+y*100+'%'; v.style.transform = 'scale('+z+')';
+  $('punch').value = z; $('punchValue').textContent = z.toFixed(2);
+  $('focusX').value=x; $('focusY').value=y;
+}
 function updateCaption() {
   if (!current || overviewRoute || $('clipStudio').hidden) return;
   const v = $('video'), isPreview = showingPreview(), draft = viewedDraft(), scene = draft.scenes[sceneIndex];
+  updateFraming(v, scene, !sourceMode && !rendered, isPreview);
   const track = isPreview ? activePreview.track : current.track;
   const cues = sourceMode ? current.cues : (track?.source || []).filter(c => c.scene === sceneIndex);
   const cue = cues.find(c => c.start <= v.currentTime && v.currentTime < c.end);
@@ -185,7 +201,7 @@ function tick() {
   updateCaption(); requestAnimationFrame(tick);
 }
 function persistDraft(pid, revision, draft) {
-  const payload = { revision, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段' })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
+  const payload = { revision, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段', punch:s.punch ?? 1, focus_x:s.focus_x ?? .5, focus_y:s.focus_y ?? .5 })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
   return api(`/api/projects/${pid}/plan`, payload);
 }
 async function savePlan() {
@@ -266,6 +282,7 @@ function drawCandidateChoices() {
     const top = document.createElement('div'); top.className = 'clip-card-top';
     const number = text('span', `${t('clip_label')} ${String(i + 1).padStart(2, '0')}`); number.className = 'clip-number';
     top.append(number, text('span', `${rangeLabel(choice)} · ${t(choice.mode === 'hook_first' ? 'hook_first' : 'source_order')}`));
+    if (choice.second_pass?.passed) top.append(text('strong', t('second_pass')));
     link.append(top, text('h3', choice.title));
     if (choice.selection?.reason) link.append(text('p', choice.selection.reason));
     const open = text('span', `${t('open_clip')} →`); open.className = 'clip-open';
@@ -319,6 +336,7 @@ function drawDetail() {
     order.append(line);
   }
   const notes = $('cutAudit'); notes.replaceChildren();
+  if (choice.second_pass?.passed) notes.append(text('strong', t('second_pass')+' · '+t('pauses')+' '+choice.second_pass.pause+' · '+t('omit_filler')+' '+choice.second_pass.filler));
   const pauses = choice.removed_silence || [], omissions = choice.dropped || [];
   notes.append(text('p', `${t('pauses')} ${pauses.length} · ${t('omissions')} ${omissions.length}`));
   for (const cut of pauses) notes.append(text('p', `${t('pauses')} · ${editRange(cut)}`));
@@ -509,7 +527,7 @@ async function playDraft() {
   await video.play();
 }
 function analysisProgress(progress) {
-  const phases = {read:'analysis_read', synthesis:'analysis_synthesis', screen:'analysis_screen', compare:'analysis_compare', body_review:'analysis_body_review',
+  const phases = {polish:'second_progress',read:'analysis_read', synthesis:'analysis_synthesis', screen:'analysis_screen', compare:'analysis_compare', body_review:'analysis_body_review',
     audio:'analysis_audio', scan:'analysis_topics', topics:'analysis_topics', body:'analysis_body', hook:'analysis_hook', review:'analysis_review'};
   const phase = Object.hasOwn(phases, progress?.phase) ? phases[progress.phase] : 'analysis_running';
   const hasCount = Number.isInteger(progress?.done) && Number.isInteger(progress?.total) && progress.total > 0;
@@ -593,8 +611,8 @@ function drawCues() {
 }
 function closeEditor() {
   if ($('saveCaptions').disabled) return false;
-  if (editorDirty && !window.confirm(t('discard_notice'))) return false;
-  editorDirty = false; captionEdits.clear(); $('editor').close(); return true;
+  if ((editorDirty || lexChanged) && !window.confirm(t('discard_notice'))) return false;
+  lexChanged = false; editorDirty = false; captionEdits.clear(); $('editor').close(); return true;
 }
 function guarded(fn) { return () => Promise.resolve().then(fn).catch(fail); }
 function showOriginal(start = 0) {
@@ -606,7 +624,7 @@ function showOriginal(start = 0) {
 }
 function describeExport(draft, track, revision, hash) {
   return draft.scenes.map((s, i) => `${i + 1}. ${time(s.start)} → ${time(s.end)} s\n`
-    + track.source.filter(c => c.scene === i).map(c => c.text).join('\n')).join('\n\n')
+    + (s.punch > 1 ? '×'+s.punch.toFixed(2)+' · X '+s.focus_x.toFixed(2)+' / Y '+s.focus_y.toFixed(2)+'\n' : '') + track.source.filter(c => c.scene === i).map(c => c.text).join('\n')).join('\n\n')
     + `\n\n${t('字幕压进画面')}: ${draft.subtitles}\n${draft.aspect}\nV${revision}${hash ? '\n' + hash : ''}`;
 }
 async function prepareExport(candidate) {
@@ -632,7 +650,7 @@ async function approveExport() {
       // Selection and the review dialog are read-only. Save this exact draft only now.
       const saved = await persistDraft(target.pid, target.revision, target.preview.draft);
       target.hash = saved.plan_hash;
-      current = { ...saved, track: target.preview.track };
+      frameDirty = false; current = { ...saved, track: target.preview.track };
       target.preview.revision = saved.revision;
       resetDraftFields(); updateTrack();
     }
@@ -685,10 +703,64 @@ async function start() {
   $('closeApproval').onclick = () => { if (!$('approve').disabled) $('approval').close(); };
   $('approval').addEventListener('cancel', e => { if ($('approve').disabled) e.preventDefault(); });
   $('approval').addEventListener('close', () => { approvalTarget = null; });
-  $('editTab').onclick = () => {
+  for (const [element, field] of [['punch','punch'],['focusX','focus_x'],['focusY','focus_y']]) {
+    $(element).onpointerdown = () => $('video').pause();
+    $(element).oninput = () => { if (!showingPreview()) return;
+      $('video').pause(); activePreview.draft.scenes[sceneIndex][field] = Number($(element).value);
+      frameDirty=true; updateCaption();
+    };
+  }
+  let lexVersion=0;
+  $('terms').oninput = () => { lexVersion++; lexChanged=true; $('termMatches').replaceChildren(); $('termCount').textContent=''; };
+  $('imeTerms').onclick=async ()=>{
+    const id=current.id;try {
+      const {terms}=await api('/api/projects/'+id+'/term-inbox',null,'GET');
+      if(id!==current?.id || !$('editor').open)return;
+      if(!terms.length){$('termCount').textContent=' · 0';return;}
+      const merged=[...new Set([...$('terms').value.split(/\r?\n/).filter(Boolean),...terms])];
+      if(merged.length>300) throw new Error('invalid_subtitles');
+      $('terms').value=merged.join('\n'); $('terms').oninput(); $('termCount').textContent=' +'+terms.length;
+    } catch(e){$('editorError').textContent=friendly(e.message);}
+  };
+  $('termFile').onchange=async e=>{
+    const file=e.target.files[0], id=current?.id; if(!file)return;
+    try {
+      if(file.size>65536) throw new Error('invalid_subtitles');
+      const bytes=new Uint8Array(await file.arrayBuffer());
+      const fmt=bytes[0]===255&&bytes[1]===254?'utf-16le':bytes[0]===254&&bytes[1]===255?'utf-16be':'utf-8';
+      const body=new TextDecoder(fmt,{fatal:true}).decode(bytes).trim();
+      if (!body || /[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(body)) throw new Error('invalid_subtitles');
+      if(current?.id!==id || !$('editor').open)return;
+      const terms=[...new Set(($('terms').value+'\n'+body).split(/\r?\n/).map(v=>v.trim()).filter(Boolean))];
+      if(terms.length>300 || terms.join('\n').length>20000) throw new Error('invalid_subtitles');
+      $('terms').value=terms.join('\n'); $('terms').oninput();
+    } catch(err){$('editorError').textContent=friendly(err.message);}
+    finally{e.target.value='';}
+  };
+  $('scanTerms').onclick = async () => {
+    const id=current.id, seq=++lexVersion; $('scanTerms').disabled=true; $('editorError').textContent='';
+    try {
+      const {changes}=await api('/api/projects/'+id+'/glossary',{revision:current.revision,terms:$('terms').value});
+      if (current.id!==id || seq!==lexVersion || !$('editor').open) return;
+      lexChanged=false; const box=$('termMatches'); box.replaceChildren(); $('termCount').textContent=' · '+changes.length;
+      for (const c of changes) {
+        const row=document.createElement('label'), check=document.createElement('input'); check.type='checkbox';
+        if (captionEdits.has(c.id)) check.disabled=true;
+        row.append(check,document.createTextNode(c.before+' → '+c.after)); box.append(row);
+        check.onchange=()=>{ if(check.checked) captionEdits.set(c.id,c.after); else if(captionEdits.get(c.id)===c.after) captionEdits.delete(c.id);
+          editorDirty=captionEdits.size>0; $('editCount').textContent=String(captionEdits.size); drawCues(); };
+      }
+    } catch(e) { $('editorError').textContent=friendly(e.message); } finally { $('scanTerms').disabled=false; }
+  };
+  $('editTab').onclick = async () => {
     if (!current?.cues.length) return;
     $('search').value = ''; $('editorError').textContent = ''; $('editCount').textContent = '';
     cuePage = 0; drawCues(); $('editor').showModal();
+    $('termMatches').replaceChildren(); $('termCount').textContent=''; $('terms').value=''; lexChanged=false;
+    const seq=++lexVersion, pid=current.id;
+    try { const result=await api('/api/projects/'+pid+'/glossary',null,'GET');
+      if(seq===lexVersion && current.id===pid && $('editor').open) $('terms').value=result.terms;
+    } catch(e) { $('editorError').textContent=friendly(e.message); }
   };
   $('closeEditor').onclick = closeEditor;
   $('editor').addEventListener('cancel', e => { e.preventDefault(); closeEditor(); });
@@ -702,6 +774,7 @@ async function start() {
     const button = $('saveCaptions');
     button.disabled = true; $('editorError').textContent = '';
     try {
+      if (lexChanged || frameDirty) throw new Error('save_manual_before_caption');
       if (dirty) throw new Error('save_manual_before_caption');
       const id = current.id;
       await api(`/api/projects/${id}/captions`, { revision: current.revision, edits: [...captionEdits].map(([id, text]) => ({ id, text })) });

@@ -453,6 +453,16 @@ def _encode_draft(
                             cmd += ['-map', f'[{last}]']
                         else:
                             cmd += ['-map', '0:v:0']
+                        if scene.punch > 1:
+                            # Crop the source picture before original layout/subtitles; restore its dimensions.
+                            z, x, y = scene.punch, scene.focus_x, scene.focus_y
+                            punch = (f'[0:v]scale=2*trunc(iw*{z}/2):2*trunc(ih*{z}/2),'
+                                     f'crop=2*round(iw/{z}/2):2*round(ih/{z}/2):(iw-ow)*{x}:(ih-oh)*{y},setsar=1')
+                            if graph:
+                                graph = graph.replace('[0:v]', punch + ',', 1)
+                            else:
+                                graph = punch + '[punched]'
+                                cmd[cmd.index('0:v:0')] = '[punched]'
                         if keep_audio:
                             graph = ';'.join(filter(None, [graph, audio.cut_filters(silence_input, duration)]))
                             cmd += ['-map', '[audioout]', '-c:a', 'pcm_s16le', '-ar', '48000', '-ac', '2']

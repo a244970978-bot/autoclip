@@ -39,6 +39,9 @@ class CropPoint(BaseModel):
 
 
 class Scene(BaseModel):
+    punch: float = Field(default=1, ge=1, le=1.6)
+    focus_x: float = Field(default=.5, ge=0, le=1)
+    focus_y: float = Field(default=.5, ge=0, le=1)
     framing_source: Literal["auto", "manual"] | None = None
     framing_adjusted: bool = False
     model_config = ConfigDict(extra='forbid', allow_inf_nan=False)

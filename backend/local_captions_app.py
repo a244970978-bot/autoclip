@@ -32,6 +32,11 @@ class Plan(BaseModel):
     subtitles: bool = True
 
 
+class Glossary(BaseModel):
+    revision: int = Field(ge=1)
+    terms: str = Field(max_length=20000)
+
+
 class Approval(BaseModel):
     model_config = ConfigDict(extra='forbid')
     plan_hash: str = Field(pattern='^[a-f0-9]{64}$')
@@ -143,6 +148,10 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
     def analyze(pid: str, scope: AnalysisScope):
         return workspace.start_job(pid, 'analyze', scope=(scope.start, scope.end))
 
+    @app.post('/api/projects/{pid}/second-pass')
+    def second_pass(pid: str):
+        return workspace.polish_latest(pid)
+
     @app.get('/api/projects/{pid}/analysis')
     def analysis(pid: str, job_id: str | None = None):
         return {'analysis': workspace.analysis(pid, job_id)}
@@ -171,6 +180,31 @@ def create_caption_app(workspace: CaptionWorkspace, port: int = 19784):
         if path.is_symlink():
             raise CaptionError('source_changed')
         return FileResponse(path, media_type='video/mp4')
+
+    @app.post('/api/projects/{pid}/glossary')
+    def glossary(pid: str, body: Glossary):
+        from backend.services.caption_glossary import suggest
+        from backend.services.local_captions import atomic
+        with workspace.lock:
+            data = workspace.load(pid)
+            if data['revision'] != body.revision:
+                raise CaptionError('revision_conflict')
+            changes = suggest(body.terms, data['cues'])
+            atomic(workspace.path(pid) / 'metadata/glossary.json', {'terms': body.terms})
+        return {'changes': changes}
+
+    @app.get('/api/projects/{pid}/term-inbox')
+    def term_inbox(pid: str):
+        path = workspace.path(pid) / 'metadata/ime-term-inbox.json'
+        if not path.is_file() or path.is_symlink() or path.stat().st_size>65536:
+            return {'terms': []}
+        return {'terms': [v for v in json.loads(path.read_text()).get('terms', [])
+                          if isinstance(v,str) and re.fullmatch(r'[\u4e00-\u9fff]{4,25}',v)][:300]}
+
+    @app.get('/api/projects/{pid}/glossary')
+    def load_glossary(pid: str):
+        path = workspace.path(pid) / 'metadata/glossary.json'
+        return json.loads(path.read_text()) if path.is_file() and not path.is_symlink() else {'terms': ''}
 
     @app.post('/api/projects/{pid}/captions')
     def edit_captions(pid: str, body: Edits):

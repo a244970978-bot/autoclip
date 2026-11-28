@@ -74,8 +74,12 @@ def main():
                     return measure_candidate_pauses(video, ranges, project_cancellation.run)
             prior_reading = find_prior_reading(project, data, job['id'], task['scope'])
             with local_model(task_path.parent / 'model-runtime.log') as call:
-                chapters = select_edits(data['cues'], task['scope'], data['info']['duration'],
+                chapters = task.get('polish_input') or select_edits(data['cues'], task['scope'], data['info']['duration'],
                                         grounded_calls(call, data['cues']), measure, progress, prior_reading=prior_reading)
+                from backend.services.editorial_polish import polish_report, portrait
+                with project_cancellation.bind(data['id']):
+                    chapters = polish_report(chapters, data['cues'], measure, call,
+                                             lambda s: portrait(video,s,project_cancellation.run), progress)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)

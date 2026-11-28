@@ -10,7 +10,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.services.local_captions import CaptionError, CaptionWorkspace, caption_track, digest
+from backend.services.local_captions import CaptionError, CaptionWorkspace, atomic, caption_track, digest
 from backend.local_captions_app import ASSETS, create_caption_app
 
 
@@ -273,7 +273,7 @@ def test_one_click_chains_existing_transcription_without_browser_and_never_rende
         source = workspace.path(pid)
         (source / 'raw/input.srt').write_bytes(fixture_media[1].read_bytes())
         tp = source / 'metadata' / ('job-' + transcribe['id'])
-        (tp / 'result.json').write_text('{"status":"completed","seconds":1}')
+        atomic(tp / 'result.json', json.loads('{"status":"completed","seconds":1}'))
         # No HTTP poll, click, or request drives the transition.
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
@@ -292,7 +292,7 @@ def test_one_click_chains_existing_transcription_without_browser_and_never_rende
         assert not list(source.glob('output/**/*.mp4'))
         # The page can still know only the ASR ID at the instant of handoff.
         workspace.cancel(pid, transcribe['id'])
-        (ap / 'result.json').write_text('{"status":"completed","seconds":1}')
+        atomic(ap / 'result.json', json.loads('{"status":"completed","seconds":1}'))
         assert wait_job(workspace, pid, analysis['id'])['status'] == 'cancelled'
 
 
@@ -307,7 +307,7 @@ def test_one_click_does_not_analyze_if_local_asr_fails_or_is_cancelled(workspace
     if asr_state == 'cancelled':
         workspace.cancel(pid, job['id'])
     path = workspace.path(pid) / 'metadata' / ('job-' + job['id'])
-    (path / 'result.json').write_text('{"status":"failed","error":"asr_failed"}')
+    atomic(path / 'result.json', json.loads('{"status":"failed","error":"asr_failed"}'))
     assert wait_job(workspace, pid, job['id'])['status'] == asr_state
     first, = workspace.load(pid)['jobs']
     assert not first.get('one_click_next')
@@ -340,7 +340,7 @@ def test_one_click_candidates_are_exact_caption_bound_and_read_only(workspace, p
                   {**chapter, 'id': 'T04', 'editorial_checks': {'outcome': 'hook_accepted', 'checks': {'flow': True}}}]}
         path = workspace.path(pid) / 'metadata' / ('job-' + job['id'])
         (path / 'chapters.json').write_text(json.dumps(report))
-        (path / 'result.json').write_text('{"status":"completed","seconds":1}')
+        atomic(path / 'result.json', json.loads('{"status":"completed","seconds":1}'))
         assert wait_job(workspace, pid, job['id'])['status'] == 'completed'
         analysis = base + '/analysis'
         assert client.get(analysis, params={'job_id': '0'*32}).json()['analysis'] is None
@@ -408,7 +408,7 @@ def v2_selection(workspace, project):
     job = workspace.one_click(pid)
     path = workspace.path(pid) / 'metadata' / ('job-' + job['id'])
     (path / 'chapters.json').write_text(json.dumps(report))
-    (path / 'result.json').write_text('{"status":"completed","seconds":1}')
+    atomic(path / 'result.json', json.loads('{"status":"completed","seconds":1}'))
     assert wait_job(workspace, pid, job['id'])['status'] == 'completed'
     return job['id'], report, path / 'chapters.json'
 
@@ -497,3 +497,30 @@ def test_v2_preview_rejects_partial_coverage_unconfirmed_body_or_invalid_source_
         assert client.get(base, params={'job_id': jid}).json()['analysis']['previewable'] == []
         assert client.get(f'{base}/{jid}/candidates/T02/preview').status_code == 404
     assert workspace.load(pid) == saved
+
+
+def test_approved_zoom_is_in_real_picture_not_just_plan(workspace, project):
+    from backend.utils.ffmpeg_utils import get_ffmpeg_path
+    data=workspace.plan(project['id'],project['revision'],{'subtitles':False,'scenes':[
+        {'id':'wide','start':1,'end':2}, {'id':'close','start':1,'end':2,'punch':1.4,'focus_x':.2}]})
+    job=workspace.start_job(data['id'],'render',plan_hash=data['plan_hash'],approved=True)
+    assert wait_job(workspace,data['id'],job['id'])['status']=='completed'
+    video=workspace.download(data['id'],job['id'],'video')
+    def pixels(t):
+        return subprocess.check_output([get_ffmpeg_path(),'-v','error','-ss',str(t),'-i',str(video),
+            '-frames:v','1','-vf','scale=80:48,format=gray','-f','rawvideo','-'])
+    wide,close=pixels(.25),pixels(1.25)
+    assert len(wide)==len(close)==3840
+    assert sum(abs(a-b) for a,b in zip(wide,close))/3840 > 7
+
+
+def test_glossary_inbox_is_opt_in_and_does_not_edit_subtitles(workspace,project):
+    base='http://127.0.0.1:19784'
+    with TestClient(create_caption_app(workspace),base_url=base,client=('127.0.0.1',4040)) as cli:
+        url='/api/projects/'+project['id']
+        headers={'Origin':base,'X-Autoclip-Local':'1'}
+        assert cli.get(url+'/term-inbox').json()=={'terms':[]}
+        res=cli.post(url+'/glossary',json={'revision':1,'terms':'第一段 => 一段测试'},headers=headers)
+        assert res.status_code==200 and len(res.json()['changes'])==1
+        assert cli.get(url+'/glossary').json()['terms']=='第一段 => 一段测试'
+        assert workspace.load(project['id'])['subtitle_sha256']==project['subtitle_sha256']
