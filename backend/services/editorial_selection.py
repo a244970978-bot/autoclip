@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from backend.services.editorial_recut import SYSTEM, SPAN, _array, _object, _overlap, _refine, _rows
+from backend.services.editorial_read_cache import READING_CONTRACT
 from backend.services.local_captions import CaptionError
 from backend.services.local_reassembly import _span, build_candidate, windows
 
@@ -113,7 +114,31 @@ def _synthesis_calls(count):
     return calls
 
 
-def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None):
+def _known_reading(prior, sections):
+    """Revalidate every core and anchor. Cached screening/priority is never trusted."""
+    if not isinstance(prior, dict) or prior.get('contract') != READING_CONTRACT:
+        return None
+    try:
+        summary = _summary(prior)
+        notes = prior['sections']
+        bounds = prior['coverage']
+        amount = sum(b-a for _, a, b in sections)
+        if (not isinstance(notes, list) or len(notes) != len(sections)
+                or not bounds['selected_cues'] == bounds['read_cues'] == amount
+                or not bounds['segments_read'] == bounds['segments_total'] == len(notes)):
+            return None
+        checked = []
+        for note, (rows, a, b) in zip(notes, sections):
+            v = _read_note({'note': note['summary'], 'anchor': note['anchor']}, rows, a, b)
+            if any(v[k] != note[k] for k in ('first', 'last', 'start', 'end')):
+                return None
+            checked.append(v)
+        return checked, summary
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None, *, prior_reading=None):
     """Read every cue and synthesize context before selecting or measuring any audio."""
     source = [c for c in cues if c['start'] >= scope[0] and c['end'] <= scope[1]]
     sections = list(windows(source))
@@ -121,7 +146,7 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
         raise CaptionError('analysis_no_cues')
     count = len(sections)
     done = 0
-    total = 4*count + 2*_synthesis_calls(count) + 1 + MAX_REVIEW*6
+    total = 4*count + 2*_synthesis_calls(count) + 1 + MAX_REVIEW*6 + 20
 
     def invoke(stage, instruction, payload, schema, max_tokens):
         nonlocal done
@@ -147,13 +172,17 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
     reading, read_cues, screened_cues, scanned, skipped = [], 0, 0, 0, 0
     summary = None
     discovered, qualified, below_threshold, invalid = 0, [], 0, 0
+    cached = _known_reading(prior_reading, sections)
+    comparison = 'rubric_only'
 
     def report(chapters, complete, *, limited=False):
         progress(total, total, 'done')
         eligible = [c['id'] for c in chapters if c['editorial_review'] == 'passed']
         return {'analysis_version': VERSION, 'scope': list(scope), 'window_count': count,
                 'failed_windows': skipped, 'needs_review': True,
-                'reading': {'summary': summary, 'sections': reading,
+                'comparison': comparison,
+                'reading': {'contract': READING_CONTRACT, 'reused': cached is not None,
+                            'summary': summary, 'sections': reading,
                             'coverage': {'complete': complete, 'selected_cues': len(source),
                                          'read_cues': read_cues, 'screened_cues': screened_cues,
                                          'segments_total': count, 'segments_read': len(reading),
@@ -164,7 +193,10 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
                               'eligible': len(eligible), 'limited': limited},
                 'chapters': chapters, 'recommended': eligible[0] if eligible else None}
 
-    for rows, a, b in sections:
+    if cached is not None:
+        reading, summary = cached
+        read_cues = len(source)
+    for rows, a, b in ([] if cached is not None else sections):
         payload = {'rows': _rows(rows), 'core_first': rows[a]['id'], 'core_last': rows[b-1]['id']}
         note = retry('read', READ, payload, READ_SCHEMA, 265, lambda raw: _read_note(raw, rows, a, b))
         if note is not None:
@@ -175,7 +207,7 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
         return report([], False)
 
     nodes = reading
-    while len(nodes) > SYNTH_GROUP:
+    while cached is None and len(nodes) > SYNTH_GROUP:
         reduced = []
         for i in range(0, len(nodes), SYNTH_GROUP):
             group = nodes[i:i+SYNTH_GROUP]
@@ -185,7 +217,8 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
             reduced.append({'first': group[0]['first'], 'last': group[-1]['last'],
                             'start': group[0]['start'], 'end': group[-1]['end'], 'summary': note})
         nodes = reduced
-    summary = retry('synthesis', SYNTHESIS, {'notes': nodes}, SYNTH_SCHEMA, 650, _summary)
+    if cached is None:
+        summary = retry('synthesis', SYNTHESIS, {'notes': nodes}, SYNTH_SCHEMA, 650, _summary)
     if summary is None:
         return report([], False)
 
@@ -217,6 +250,8 @@ def select_edits(cues, scope, duration, call, measure, progress=lambda *_: None)
         return report([], False)
 
     ranked = sorted(qualified, key=lambda c: _rank(c['selection']['criteria']), reverse=True)
+    from backend.services.editorial_comparison import compare_candidates
+    ranked, comparison = compare_candidates(ranked, summary, invoke)
     shortlist = []
     for candidate in ranked:
         if not any(_overlap(candidate['plan'], other['plan']) for other in shortlist):

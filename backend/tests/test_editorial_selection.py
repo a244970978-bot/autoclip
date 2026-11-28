@@ -46,11 +46,12 @@ def candidate(topic, strengths=(2, 2, 2, 2, 2)):
 
 
 class FixtureModel:
-    def __init__(self, screen=None, *, fail=None, checks=None, hook=True):
+    def __init__(self, screen=None, *, fail=None, checks=None, hook=True, compare=None):
         self.screen = screen or (lambda topic: [candidate(topic)])
         self.fail = fail or (lambda *_: False)
         self.checks = checks or (lambda *_: True)
         self.hook = hook
+        self.compare = compare or (lambda _: {'order': []})  # Exercise deterministic rubric fallback by default.
         self.events = []
         self.progress = []
 
@@ -73,6 +74,8 @@ class FixtureModel:
         if stage == 'screen':
             topic = (int(payload['core_first'][1:]) - 1)//len(TEXT)
             return {'chapters': self.screen(topic)}
+        if stage == 'compare':
+            return self.compare(payload)
         if stage == 'body':
             topic = self.topic(payload['rows'])
             return {'drop': [{'span': [cue_id(topic, line)]*2, 'kind': 'repetition'}
@@ -118,8 +121,8 @@ def test_reads_all_scoped_cues_then_compares_later_topics_with_the_same_rubric()
             ids = [r[0] for r in row['rows']]
             core_cues += ids[ids.index(row['core_first']): ids.index(row['core_last'])+1]
         assert core_cues == [c['id'] for c in source(3)]
-    assert [stage for stage, _ in fixture.events[:8]] == [
-        'read', 'read', 'read', 'synthesis', 'screen', 'screen', 'screen', 'measure']
+    assert [stage for stage, _ in fixture.events[:9]] == [
+        'read', 'read', 'read', 'synthesis', 'screen', 'screen', 'screen', 'compare', 'measure']
     final_cue = cue_id(2, 9)
     assert final_cue in fixture.for_stage('screen')[0]['whole_summary']
     assert all(p['whole_summary'] == result['reading']['summary'] for p in fixture.for_stage('screen'))
@@ -127,6 +130,7 @@ def test_reads_all_scoped_cues_then_compares_later_topics_with_the_same_rubric()
     late, early = result['chapters']
     assert late['first'] == cue_id(2, 0) and early['first'] == cue_id(0, 0)
     assert result['recommended'] == late['id']
+    assert result['comparison'] == 'rubric_fallback'
     assert result['selection'] == {'rubric_version': 'spread_v1', 'discovered': 3, 'qualified': 2,
                                    'below_threshold': 1, 'invalid': 0, 'reviewed': 2, 'eligible': 2,
                                    'limited': False}
@@ -142,6 +146,24 @@ def test_reads_all_scoped_cues_then_compares_later_topics_with_the_same_rubric()
     assert steps == sorted(steps)
     done, total, stage = fixture.progress[-1]
     assert stage == 'done' and done == total
+
+
+def test_candidates_with_the_same_grade_are_compared_across_the_source_before_audio():
+    labels = ['备课新人', '反馈周会上负责方法落地的负责人']
+
+    def choices(topic):
+        return [{**candidate(topic), 'audience': labels[topic]}]
+
+    def actual_comparison(payload):
+        assert cue_id(1, 9) in payload['whole_summary']
+        handles = {item[1]: item[0] for item in payload['items']}
+        return {'order': [handles[labels[1]], handles[labels[0]]]}
+
+    fixture = FixtureModel(choices, compare=actual_comparison)
+    result = fixture.run(2)
+    assert result['comparison'] == 'comparative_model'
+    assert [c['first'] for c in result['chapters']] == [cue_id(1, 0), cue_id(0, 0)]
+    assert fixture.for_stage('measure') == [[(c['start'], c['end']) for c in result['chapters']]]
 
 
 @pytest.mark.parametrize('problem', [

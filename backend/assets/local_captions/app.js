@@ -218,6 +218,15 @@ function reportChoices(report) {
   const byId = new Map(report.chapters.map(choice => [choice.id, choice]));
   return report.previewable.map(id => byId.get(id)).filter(Boolean);
 }
+function selectionUnverified(report) {
+  const selection = report?.selection;
+  if (report?.analysis_version !== 'editorial_v2' || report.reading?.coverage?.complete !== true
+      || !Number.isInteger(selection?.discovered) || selection.discovered <= 0 || selection.qualified !== 0) return false;
+  // Early v2 results did not distinguish below-threshold proposals from
+  // unusable citations; don't infer that the material has no viable clips.
+  if (!Number.isInteger(selection.invalid) || !Number.isInteger(selection.below_threshold)) return true;
+  return selection.invalid === selection.discovered;
+}
 function drawCoverage() {
   const box = $('analysisCoverage'), report = oneClickResult?.report;
   const coverage = report?.reading?.coverage;
@@ -226,6 +235,11 @@ function drawCoverage() {
   box.append(text('strong', t(coverage.complete ? 'reading_complete' : 'reading_incomplete')));
   box.append(text('p', `${t('reading_cues')} ${coverage.read_cues}/${coverage.selected_cues} · ${t('screening_cues')} ${coverage.screened_cues}/${coverage.selected_cues}`));
   if (report.reading.summary) box.append(text('p', report.reading.summary));
+  const methods = {rubric_only:'ranking_rubric_only', comparative_model:'ranking_comparative_model',
+    comparative_balanced:'ranking_comparative_balanced', rubric_fallback:'ranking_rubric_fallback'};
+  if (coverage.complete === true && Object.hasOwn(methods, report.comparison)) {
+    box.append(text('p', `${t(methods[report.comparison])} ${t('rubric_notice')}`));
+  }
   if (report.selection?.limited) box.append(text('p', t('selection_limited')));
   const sectionSummaries = (report.reading.sections || []).filter(s => s.summary);
   if (sectionSummaries.length) {
@@ -241,8 +255,9 @@ function drawCandidateChoices() {
   const report = result?.report;
   const legacy = report?.analysis_version === 'editorial_v1';
   $('candidateHeading').textContent = t(legacy ? 'legacy_candidates' : 'one_click_candidates');
-  $('candidateCount').hidden = !report || legacy || report.reading?.coverage?.complete !== true;
-  $('candidateCount').textContent = String(choices.length);
+  const countKnown = !!report && !legacy && report.reading?.coverage?.complete === true && !selectionUnverified(report);
+  $('candidateCount').hidden = !countKnown;
+  $('candidateCount').textContent = countKnown ? String(choices.length) : '';
   $('candidatePicker').hidden = !choices.length;
   for (const [i, choice] of choices.entries()) {
     const item = document.createElement('li');
@@ -386,6 +401,7 @@ function updateOneClick(active) {
       if (error) status = friendly(error);
       else if (report.analysis_version === 'editorial_v1') status = t('legacy_notice');
       else if (report.reading?.coverage?.complete !== true) status = t('reading_incomplete_notice');
+      else if (selectionUnverified(report)) status = t('selection_unverified');
       else status = t(choices.length ? 'one_click_ready' : 'no_usable_clips');
     } else {
       status = t('加载中');
@@ -493,7 +509,7 @@ async function playDraft() {
   await video.play();
 }
 function analysisProgress(progress) {
-  const phases = {read:'analysis_read', synthesis:'analysis_synthesis', screen:'analysis_screen', body_review:'analysis_body_review',
+  const phases = {read:'analysis_read', synthesis:'analysis_synthesis', screen:'analysis_screen', compare:'analysis_compare', body_review:'analysis_body_review',
     audio:'analysis_audio', scan:'analysis_topics', topics:'analysis_topics', body:'analysis_body', hook:'analysis_hook', review:'analysis_review'};
   const phase = Object.hasOwn(phases, progress?.phase) ? phases[progress.phase] : 'analysis_running';
   const hasCount = Number.isInteger(progress?.done) && Number.isInteger(progress?.total) && progress.total > 0;

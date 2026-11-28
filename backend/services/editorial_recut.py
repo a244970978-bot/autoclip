@@ -250,7 +250,11 @@ def _refine(candidate, cues, ids, scope, duration, pauses, invoke, *, verify_bod
         if verify_body:
             payload['scene_times'] = [[s['first'], s['last'], s['start'], s['end']] for s in plan['scenes']]
             payload['measured_silence_removed'] = plan['removed_silence']
-        answer = invoke(stage, REVIEW, payload, REVIEW_SCHEMA, 62)
+            payload['selection_to_verify'] = candidate['selection']
+        evidence_review = (' 独立核对 selection_to_verify 的观点、根据、收尾原话。若根据不支持观点，'
+                           '正文不兑现声称的收获，或把不同话题拼成因果，meaning 必须为 false。'
+                           if verify_body else '')
+        answer = invoke(stage, REVIEW + evidence_review, payload, REVIEW_SCHEMA, 62)
         if isinstance(answer, dict) and all(type(answer.get(key)) is bool for key in CHECK_KEYS):
             return {key: answer[key] for key in CHECK_KEYS}
         return None

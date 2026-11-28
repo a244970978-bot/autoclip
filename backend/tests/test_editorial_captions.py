@@ -495,7 +495,7 @@ def _bar_edges(template: str, total: float, times: list[float], folder: Path) ->
             '-f', 'lavfi', '-i', f'color=c=black:s=1080x1920:r=30:d={total}',
             '-f', 'lavfi', '-i', f'color=c=black@0:s=1080x1920:r=30:d={total},format=rgba',
             '-filter_complex', graph + f';[{label}]select=\'{picked}\'[picked]',
-            '-map', '[picked]', '-vsync', 'vfr', str(dest / 'f%02d.png'),
+            '-map', '[picked]', '-fps_mode', 'vfr', str(dest / 'f%02d.png'),
         ],
         check=True, capture_output=True,
     )

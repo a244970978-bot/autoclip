@@ -63,15 +63,19 @@ def main():
                 raise CaptionError('subtitles_changed')
             from backend.core import project_cancellation
             from backend.services.editorial_audio import measure_candidate_pauses
+            from backend.services.editorial_read_cache import find_prior_reading
             from backend.services.editorial_selection import select_edits
+            from backend.services.editorial_units import grounded_calls
             from backend.services.reassembly_runtime import local_model
             def progress(done, total, phase):
                 atomic(task_path.parent / 'progress.json', {'done': done, 'total': total, 'phase': phase})
             def measure(ranges):
                 with project_cancellation.bind(data['id']):
                     return measure_candidate_pauses(video, ranges, project_cancellation.run)
+            prior_reading = find_prior_reading(project, data, job['id'], task['scope'])
             with local_model(task_path.parent / 'model-runtime.log') as call:
-                chapters = select_edits(data['cues'], task['scope'], data['info']['duration'], call, measure, progress)
+                chapters = select_edits(data['cues'], task['scope'], data['info']['duration'],
+                                        grounded_calls(call, data['cues']), measure, progress, prior_reading=prior_reading)
             if digest(subtitle) != data['subtitle_sha256']:
                 raise CaptionError('subtitles_changed')
             atomic(task_path.parent / 'chapters.json', chapters)

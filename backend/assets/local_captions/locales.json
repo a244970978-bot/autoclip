@@ -65,7 +65,7 @@
     "analysis_range": "请填写有效原片范围（秒或分:秒，至少 18 秒）。",
     "analysis_model_missing": "本机主题模型不可用；未调用云端。",
     "one_click_generate": "一键生成成片预览",
-    "one_click_help": "先读完字幕并理解全片主线，再按统一标准选有传播潜力的片段。点击片段可以查看原片位置、选中理由和剪辑结果。",
+    "one_click_help": "先读完整份字幕、理解全片主线，再按统一标准横向比较；只有入选后才精剪。点开片段可看原片位置、入选理由和剪辑结果。",
     "one_click_candidates": "可用片段",
     "one_click_seek": "成片预览进度",
     "one_click_manual": "手动选范围与调整草稿",
@@ -124,7 +124,13 @@
     "analysis_body_review": "正在复核气口剪后的正文",
     "cue_units": "条字幕",
     "empty_transcript": "没有匹配的字幕。",
-    "save_manual_before_caption": "请先保存手动草稿，再提交字幕修改。"
+    "save_manual_before_caption": "请先保存手动草稿，再提交字幕修改。",
+    "selection_unverified": "已读完全文，但模型给出的候选都没有可核对的原片位置。现在无法确定可用片段数量，这不代表原片没有好片段。可重新生成。",
+    "analysis_compare": "正在横比全片候选，排序后再精剪",
+    "ranking_rubric_only": "本轮仅按编辑规则筛选，未运行模型横比。",
+    "ranking_comparative_model": "本轮用模型横向比较了全片所有通过初筛的候选。",
+    "ranking_comparative_balanced": "本轮把全片候选按时间均衡分组横比，入围项统一复比，其余保留规则顺序。",
+    "ranking_rubric_fallback": "模型横比未能完成，本轮只按编辑规则排序。"
   },
   "tr": {
     "播放成片": "Dışa aktarılan videoyu oynat",
@@ -192,7 +198,7 @@
     "analysis_range": "Geçerli aralık girin (saniye veya dd:ss, en az 18 s).",
     "analysis_model_missing": "Yerel model kullanılamıyor. Bulut kullanılmadı.",
     "one_click_generate": "Tek tıkla önizleme oluştur",
-    "one_click_help": "Önce tüm dökümü ve ana anlatımı okuyun, sonra aynı ölçütlerle klip seçin. Nedenini ve kurgusunu görmek için klibi açın.",
+    "one_click_help": "Önce tüm dökümü ve ana anlatımı okuyun, sonra aynı ölçütlerle klip seçin. Nedenini ve kurgusunu görmek için klibi açın. Adaylar tüm video genelinde karşılaştırılır, ardından seçilen klipler düzenlenir.",
     "one_click_candidates": "Kullanılabilir klipler",
     "one_click_seek": "Önizleme konumu",
     "one_click_manual": "El ile aralık seçimi ve taslak düzenleme",
@@ -251,7 +257,13 @@
     "analysis_body_review": "Duraklamalar kesildikten sonra ana bölüm denetleniyor",
     "cue_units": "altyazı",
     "empty_transcript": "Eşleşen altyazı yok.",
-    "save_manual_before_caption": "Altyazıları değiştirmeden önce taslağı kaydedin."
+    "save_manual_before_caption": "Altyazıları değiştirmeden önce taslağı kaydedin.",
+    "selection_unverified": "Dökümün tamamı okundu ancak model önerileri için doğrulanabilir kaynak konumu vermedi. Kullanılabilir klip sayısı belirlenemedi; bu, kullanılabilir klip olmadığı anlamına gelmez. Yeniden oluşturmayı deneyin.",
+    "analysis_compare": "Kurgu öncesi videonun tamamındaki adaylar karşılaştırılıyor",
+    "ranking_rubric_only": "Bu turda model karşılaştırması yapılmadan editoryal ölçütler uygulandı.",
+    "ranking_comparative_model": "Model, videonun tamamından ölçütleri geçen adayların tümünü karşılaştırdı.",
+    "ranking_comparative_balanced": "Model, zamana göre dengeli grupları ve ardından finale kalanları karşılaştırdı. Diğer adayların sırası ölçütlere göre korundu.",
+    "ranking_rubric_fallback": "Model karşılaştırması tamamlanmadı. Bu turda adaylar yalnızca editoryal ölçütlerle sıralandı."
   },
   "ja": {
     "播放成片": "完成動画を再生",
@@ -319,7 +331,7 @@
     "analysis_range": "有効な範囲（秒または分:秒、18秒以上）を入力。",
     "analysis_model_missing": "ローカルモデルを使用できません。クラウドは未使用。",
     "one_click_generate": "ワンクリックでプレビューを作成",
-    "one_click_help": "全文を読んで論旨を把握し、同じ基準で選別します。クリップを開くと選定理由と編集内容を確認できます。",
+    "one_click_help": "全文を読んで論旨を把握し、同じ基準で選別します。クリップを開くと選定理由と編集内容を確認できます。動画全体の候補を比較してから、採用した箇所だけを編集します。",
     "one_click_candidates": "使用可能なクリップ",
     "one_click_seek": "プレビューの再生位置",
     "one_click_manual": "範囲選択と下書きの手動編集",
@@ -378,7 +390,13 @@
     "analysis_body_review": "間を詰めた本編を再確認中",
     "cue_units": "行",
     "empty_transcript": "一致する字幕がありません。",
-    "save_manual_before_caption": "字幕を変更する前に下書きを保存してください。"
+    "save_manual_before_caption": "字幕を変更する前に下書きを保存してください。",
+    "selection_unverified": "全文を読み取りましたが、モデルの候補には確認できる元動画の位置がありません。使用できる件数は未確定で、ゼロと判定したわけではありません。再生成してください。",
+    "analysis_compare": "編集前に動画全体の候補を比較中",
+    "ranking_rubric_only": "今回はモデル比較を行わず、編集基準で選別しました。",
+    "ranking_comparative_model": "基準を満たした動画全体の候補をモデルで比較しました。",
+    "ranking_comparative_balanced": "動画内の時間が偏らないように候補を分けて比較し、通過した候補を再比較しました。それ以外は編集基準順です。",
+    "ranking_rubric_fallback": "モデル比較を完了できず、今回は編集基準の順序のみを使いました。"
   },
   "de": {
     "播放成片": "Exportiertes Video abspielen",
@@ -446,7 +464,7 @@
     "analysis_range": "Gültigen Bereich eingeben (Sekunden oder mm:ss, mindestens 18 s).",
     "analysis_model_missing": "Lokales Themenmodell nicht verfügbar. Keine Cloud-Nutzung.",
     "one_click_generate": "Vorschauen mit einem Klick erstellen",
-    "one_click_help": "Das Transkript ganz lesen, den Hauptgedanken verstehen und Clips nach gemeinsamen Kriterien auswählen. Gründe und Schnitt stehen in der Detailansicht.",
+    "one_click_help": "Das Transkript ganz lesen, den Hauptgedanken verstehen und Clips nach gemeinsamen Kriterien auswählen. Gründe und Schnitt stehen in der Detailansicht. Vorschläge aus dem ganzen Video werden verglichen, bevor ausgewählte Clips bearbeitet werden.",
     "one_click_candidates": "Verwendbare Clips",
     "one_click_seek": "Vorschauposition",
     "one_click_manual": "Bereich und Entwurf manuell bearbeiten",
@@ -505,7 +523,13 @@
     "analysis_body_review": "Der Hauptteil wird nach Pausenkürzung geprüft",
     "cue_units": "Untertitel",
     "empty_transcript": "Keine passenden Untertitel.",
-    "save_manual_before_caption": "Vor der Untertiteländerung den Schnittentwurf speichern."
+    "save_manual_before_caption": "Vor der Untertiteländerung den Schnittentwurf speichern.",
+    "selection_unverified": "Das gesamte Transkript wurde gelesen, aber das Modell lieferte für seine Vorschläge keine überprüfbaren Stellen im Original. Die Anzahl verwendbarer Clips ist unbekannt; daraus folgt nicht, dass es keine verwendbaren Clips gibt. Versuchen Sie es erneut.",
+    "analysis_compare": "Vorschläge aus dem gesamten Video werden vor dem Schnitt verglichen",
+    "ranking_rubric_only": "Dieser Durchlauf nutzte die redaktionellen Kriterien ohne Modellvergleich.",
+    "ranking_comparative_model": "Das Modell verglich alle qualifizierten Vorschläge aus dem gesamten Video.",
+    "ranking_comparative_balanced": "Das Modell verglich zeitlich ausgewogene Gruppen und danach die Finalisten. Die übrigen Vorschläge blieben nach Kriterien sortiert.",
+    "ranking_rubric_fallback": "Der Modellvergleich wurde nicht abgeschlossen. Die Sortierung folgte nur den redaktionellen Kriterien."
   },
   "ru": {
     "播放成片": "Воспроизвести готовое видео",
@@ -573,7 +597,7 @@
     "analysis_range": "Введите допустимый диапазон (секунды или мм:сс, минимум 18 с).",
     "analysis_model_missing": "Локальная модель недоступна. Облако не использовалось.",
     "one_click_generate": "Создать варианты в один клик",
-    "one_click_help": "Сначала читается весь текст, затем клипы отбираются по общим критериям. Откройте клип, чтобы увидеть причину выбора и монтаж.",
+    "one_click_help": "Сначала читается весь текст, затем клипы отбираются по общим критериям. Откройте клип, чтобы увидеть причину выбора и монтаж. Варианты из всего видео сравниваются до монтажа выбранных клипов.",
     "one_click_candidates": "Пригодные клипы",
     "one_click_seek": "Позиция просмотра",
     "one_click_manual": "Диапазон и черновик вручную",
@@ -632,7 +656,13 @@
     "analysis_body_review": "Основная часть проверяется после удаления пауз",
     "cue_units": "субтитры",
     "empty_transcript": "Совпадающих субтитров нет.",
-    "save_manual_before_caption": "Сохраните черновик до изменения субтитров."
+    "save_manual_before_caption": "Сохраните черновик до изменения субтитров.",
+    "selection_unverified": "Весь текст прочитан, но модель не указала проверяемые места в исходнике для своих предложений. Число пригодных клипов пока неизвестно; это не значит, что их нет. Попробуйте повторить обработку.",
+    "analysis_compare": "Сравниваются варианты из всего видео перед монтажом",
+    "ranking_rubric_only": "В этом запуске использовались редакторские критерии без сравнения моделью.",
+    "ranking_comparative_model": "Модель сравнила все подходящие варианты из всего видео.",
+    "ranking_comparative_balanced": "Модель сравнила группы с равномерным охватом видео, затем их финалистов. Остальные остались в порядке редакторской оценки.",
+    "ranking_rubric_fallback": "Сравнение моделью не завершилось. Варианты упорядочены только по редакторским критериям."
   },
   "pt": {
     "播放成片": "Reproduzir vídeo exportado",
@@ -700,7 +730,7 @@
     "analysis_range": "Informe um intervalo válido (segundos ou mm:ss, no mínimo 18 s).",
     "analysis_model_missing": "Modelo local indisponível. Nuvem não utilizada.",
     "one_click_generate": "Gerar prévias em um clique",
-    "one_click_help": "Leia a transcrição inteira, entenda o fio condutor e selecione clipes pelos mesmos critérios. Abra um clipe para ver o motivo e a edição.",
+    "one_click_help": "Leia a transcrição inteira, entenda o fio condutor e selecione clipes pelos mesmos critérios. Abra um clipe para ver o motivo e a edição. Os candidatos de todo o vídeo são comparados antes de editar os clipes selecionados.",
     "one_click_candidates": "Clipes utilizáveis",
     "one_click_seek": "Posição da prévia",
     "one_click_manual": "Intervalo e rascunho manuais",
@@ -759,7 +789,13 @@
     "analysis_body_review": "Revendo o conteúdo após os cortes de pausas",
     "cue_units": "legendas",
     "empty_transcript": "Nenhuma legenda correspondente.",
-    "save_manual_before_caption": "Salve o rascunho antes de alterar as legendas."
+    "save_manual_before_caption": "Salve o rascunho antes de alterar as legendas.",
+    "selection_unverified": "A transcrição toda foi lida, mas o modelo não apontou trechos verificáveis no original para suas sugestões. Não foi possível determinar o número de clipes utilizáveis; isso não significa que não existam. Tente gerar novamente.",
+    "analysis_compare": "Comparando candidatos de todo o vídeo antes da edição",
+    "ranking_rubric_only": "Nesta rodada, foram usados critérios editoriais sem comparação pelo modelo.",
+    "ranking_comparative_model": "O modelo comparou todos os candidatos qualificados de todo o vídeo.",
+    "ranking_comparative_balanced": "O modelo comparou grupos equilibrados no tempo e depois os finalistas. Os demais mantiveram a ordem dos critérios.",
+    "ranking_rubric_fallback": "A comparação pelo modelo não foi concluída. A ordenação usou apenas os critérios editoriais."
   },
   "en": {
     "播放成片": "Play exported video",
@@ -827,7 +863,7 @@
     "analysis_range": "Enter a valid source range (seconds or mm:ss, at least 18 seconds).",
     "analysis_model_missing": "The local topic model is unavailable. No cloud service was used.",
     "one_click_generate": "Generate previews in one click",
-    "one_click_help": "Read the full transcript, understand the main thread, then select clips using the same criteria. Open a clip to see why it was chosen and how it was edited.",
+    "one_click_help": "Read the full transcript, understand the main thread, then select clips using the same criteria. Open a clip to see why it was chosen and how it was edited. Candidates from across the video are compared before the selected clips are edited.",
     "one_click_candidates": "Usable clips",
     "one_click_seek": "Preview position",
     "one_click_manual": "Manual range and draft editing",
@@ -886,7 +922,13 @@
     "analysis_body_review": "Rechecking the body after pause cuts",
     "cue_units": "captions",
     "empty_transcript": "No matching captions.",
-    "save_manual_before_caption": "Save the manual draft before changing captions."
+    "save_manual_before_caption": "Save the manual draft before changing captions.",
+    "selection_unverified": "The full transcript was read, but the model returned no verifiable source locations for its proposals. The usable clip count could not be determined; this does not mean there are no usable clips. Try generating again.",
+    "analysis_compare": "Comparing candidates across the full video before editing",
+    "ranking_rubric_only": "This run applied the editorial rubric without model comparison.",
+    "ranking_comparative_model": "The model compared all qualifying candidates from across the video.",
+    "ranking_comparative_balanced": "The model compared time-balanced groups, then compared the finalists. The rest stayed in rubric order.",
+    "ranking_rubric_fallback": "Model comparison did not complete. This run used only the editorial rubric to order the candidates."
   },
   "fr": {
     "播放成片": "Lire la vidéo exportée",
@@ -954,7 +996,7 @@
     "analysis_range": "Saisissez une plage valide (secondes ou mm:ss, au moins 18 s).",
     "analysis_model_missing": "Modèle local indisponible. Aucun appel cloud.",
     "one_click_generate": "Créer des aperçus en un clic",
-    "one_click_help": "Lisez toute la transcription et comprenez le fil directeur avant la sélection. Ouvrez un extrait pour voir sa justification et le montage.",
+    "one_click_help": "Lisez toute la transcription et comprenez le fil directeur avant la sélection. Ouvrez un extrait pour voir sa justification et le montage. Les extraits de toute la vidéo sont comparés avant de monter ceux qui ont été retenus.",
     "one_click_candidates": "Extraits utilisables",
     "one_click_seek": "Position dans l’aperçu",
     "one_click_manual": "Plage et brouillon : réglages manuels",
@@ -1013,7 +1055,13 @@
     "analysis_body_review": "Vérification après réduction des pauses",
     "cue_units": "sous-titres",
     "empty_transcript": "Aucun sous-titre correspondant.",
-    "save_manual_before_caption": "Enregistrez le brouillon avant de modifier les sous-titres."
+    "save_manual_before_caption": "Enregistrez le brouillon avant de modifier les sous-titres.",
+    "selection_unverified": "Toute la transcription a été lue, mais le modèle n’a fourni aucun repère vérifiable dans la source pour ses suggestions. Le nombre d’extraits utilisables est inconnu ; cela ne veut pas dire qu’il n’y en a aucun. Relancez la génération.",
+    "analysis_compare": "Comparaison des extraits de toute la vidéo avant le montage",
+    "ranking_rubric_only": "Les critères éditoriaux ont été appliqués sans comparaison par le modèle.",
+    "ranking_comparative_model": "Le modèle a comparé tous les candidats qualifiés issus de la vidéo entière.",
+    "ranking_comparative_balanced": "Le modèle a comparé des groupes équilibrés dans le temps, puis les finalistes. Les autres ont gardé l’ordre des critères.",
+    "ranking_rubric_fallback": "La comparaison par le modèle n’a pas abouti. Seuls les critères éditoriaux ont servi au classement."
   },
   "ko": {
     "播放成片": "완성 영상 재생",
@@ -1081,7 +1129,7 @@
     "analysis_range": "유효한 범위를 입력하세요(초 또는 분:초, 최소 18초).",
     "analysis_model_missing": "로컬 모델을 사용할 수 없습니다. 클라우드는 사용하지 않았습니다.",
     "one_click_generate": "한 번에 편집 미리보기 만들기",
-    "one_click_help": "전체 전사문과 주제를 이해한 뒤 같은 기준으로 선별합니다. 클립에서 선택 이유와 편집 결과를 확인하세요.",
+    "one_click_help": "전체 전사문과 주제를 이해한 뒤 같은 기준으로 선별합니다. 클립에서 선택 이유와 편집 결과를 확인하세요. 영상 전체의 후보를 비교한 뒤 선정된 클립만 편집합니다.",
     "one_click_candidates": "사용 가능한 클립",
     "one_click_seek": "미리보기 재생 위치",
     "one_click_manual": "범위와 초안 직접 편집",
@@ -1140,7 +1188,13 @@
     "analysis_body_review": "쉼을 줄인 본문을 다시 확인하는 중",
     "cue_units": "개 자막",
     "empty_transcript": "일치하는 자막이 없습니다.",
-    "save_manual_before_caption": "자막을 수정하기 전에 초안을 저장하세요."
+    "save_manual_before_caption": "자막을 수정하기 전에 초안을 저장하세요.",
+    "selection_unverified": "전체 전사문을 읽었지만 모델이 제안한 후보의 원본 위치를 확인할 수 없습니다. 사용 가능한 클립 수를 확인할 수 없으며, 사용할 클립이 없다는 뜻은 아닙니다. 다시 생성해 보세요.",
+    "analysis_compare": "편집 전 영상 전체의 후보를 비교하는 중",
+    "ranking_rubric_only": "이번에는 모델 비교 없이 편집 기준만 적용했습니다.",
+    "ranking_comparative_model": "모델이 영상 전체에서 1차 기준을 통과한 후보를 모두 비교했습니다.",
+    "ranking_comparative_balanced": "모델이 시간대가 고르게 섞인 그룹을 비교하고 결선 후보를 다시 비교했습니다. 나머지는 편집 기준 순서를 유지했습니다.",
+    "ranking_rubric_fallback": "모델 비교를 완료하지 못해 이번에는 편집 기준으로만 후보를 정렬했습니다."
   },
   "zh-TW": {
     "播放成片": "播放匯出影片",
@@ -1208,7 +1262,7 @@
     "analysis_range": "請填有效範圍（秒或分:秒，至少 18 秒）。",
     "analysis_model_missing": "本機主題模型不可用，未呼叫雲端。",
     "one_click_generate": "一鍵產生成片預覽",
-    "one_click_help": "先讀完字幕、理解全文主線，再按同樣標準選片段。點選片段可查看原片位置、選中理由和剪輯結果。",
+    "one_click_help": "先讀完整份字幕、理解全片主線，再按相同標準比較；只有入選後才精剪。點開片段可看原片位置、入選理由和剪輯結果。",
     "one_click_candidates": "可用片段",
     "one_click_seek": "成片預覽進度",
     "one_click_manual": "手動選範圍與調整草稿",
@@ -1267,7 +1321,13 @@
     "analysis_body_review": "正在複核縮短停頓後的主體",
     "cue_units": "條字幕",
     "empty_transcript": "沒有相符的字幕。",
-    "save_manual_before_caption": "請先儲存手動草稿，再送出字幕修改。"
+    "save_manual_before_caption": "請先儲存手動草稿，再送出字幕修改。",
+    "selection_unverified": "已讀完整篇，但模型給出的候選資料沒有可核對的原片位置。暫時無法確定可用片段數量，這不代表原片沒有好片段。可重新產生。",
+    "analysis_compare": "正在比較全片候選，排序後再精剪",
+    "ranking_rubric_only": "本輪僅依編輯規則篩選，未執行模型比較。",
+    "ranking_comparative_model": "本輪透過模型橫向比較整部影片中通過初篩的所有候選。",
+    "ranking_comparative_balanced": "本輪把全片候選依時間均衡分組比較，入圍項目統一複比，其餘保留規則順序。",
+    "ranking_rubric_fallback": "模型比較未能完成，本輪只依編輯規則排序。"
   },
   "vi": {
     "播放成片": "Phát video thành phẩm",
@@ -1335,7 +1395,7 @@
     "analysis_range": "Nhập phạm vi hợp lệ (giây hoặc phút:giây, ít nhất 18 giây).",
     "analysis_model_missing": "Không có mô hình cục bộ. Không dùng đám mây.",
     "one_click_generate": "Tạo bản xem trước bằng một lần bấm",
-    "one_click_help": "Đọc toàn bộ bản chép lời và hiểu mạch chính trước khi chọn. Mở từng đoạn để xem lý do và phần đã dựng.",
+    "one_click_help": "Đọc toàn bộ bản chép lời và hiểu mạch chính trước khi chọn. Mở từng đoạn để xem lý do và phần đã dựng. So sánh các đề xuất trong toàn bộ video trước khi dựng những đoạn được chọn.",
     "one_click_candidates": "Đoạn có thể dùng",
     "one_click_seek": "Vị trí xem trước",
     "one_click_manual": "Chọn khoảng và sửa bản nháp thủ công",
@@ -1394,7 +1454,13 @@
     "analysis_body_review": "Đang kiểm tra lại phần thân sau khi cắt khoảng dừng",
     "cue_units": "phụ đề",
     "empty_transcript": "Không tìm thấy phụ đề phù hợp.",
-    "save_manual_before_caption": "Lưu bản nháp trước khi sửa phụ đề."
+    "save_manual_before_caption": "Lưu bản nháp trước khi sửa phụ đề.",
+    "selection_unverified": "Đã đọc toàn bộ bản chép lời nhưng mô hình không đưa ra vị trí có thể kiểm chứng trong nguồn cho các đề xuất. Chưa xác định được số đoạn có thể dùng; điều đó không có nghĩa là không có đoạn nào. Hãy thử tạo lại.",
+    "analysis_compare": "Đang so sánh các đề xuất từ toàn bộ video trước khi dựng",
+    "ranking_rubric_only": "Lượt này áp dụng tiêu chí biên tập mà không so sánh bằng mô hình.",
+    "ranking_comparative_model": "Mô hình đã so sánh mọi đề xuất đạt tiêu chí trên toàn bộ video.",
+    "ranking_comparative_balanced": "Mô hình so sánh các nhóm cân bằng theo thời gian rồi so sánh các đề xuất vào vòng cuối. Các đề xuất còn lại giữ thứ tự theo tiêu chí.",
+    "ranking_rubric_fallback": "Chưa hoàn tất so sánh bằng mô hình. Lượt này chỉ xếp theo tiêu chí biên tập."
   },
   "id": {
     "播放成片": "Putar video hasil ekspor",
@@ -1462,7 +1528,7 @@
     "analysis_range": "Masukkan rentang sah (detik atau mm:dd, minimal 18 detik).",
     "analysis_model_missing": "Model lokal tidak tersedia. Tidak memakai cloud.",
     "one_click_generate": "Buat pratinjau dengan satu klik",
-    "one_click_help": "Pahami transkrip lengkap sebelum menyeleksi klip dengan kriteria yang sama. Buka klip untuk melihat alasan dan hasil suntingannya.",
+    "one_click_help": "Pahami transkrip lengkap sebelum menyeleksi klip dengan kriteria yang sama. Buka klip untuk melihat alasan dan hasil suntingannya. Kandidat dari seluruh video dibandingkan sebelum klip terpilih disunting.",
     "one_click_candidates": "Klip yang dapat dipakai",
     "one_click_seek": "Posisi pratinjau",
     "one_click_manual": "Atur rentang dan edit draf secara manual",
@@ -1521,7 +1587,13 @@
     "analysis_body_review": "Memeriksa bagian utama setelah jeda dipotong",
     "cue_units": "takarir",
     "empty_transcript": "Tidak ada takarir yang cocok.",
-    "save_manual_before_caption": "Simpan draf sebelum mengubah takarir."
+    "save_manual_before_caption": "Simpan draf sebelum mengubah takarir.",
+    "selection_unverified": "Transkrip lengkap telah dibaca, tetapi model tidak memberikan lokasi sumber yang bisa diverifikasi untuk usulannya. Jumlah klip yang layak belum diketahui; ini bukan berarti tidak ada klip yang layak. Coba buat ulang.",
+    "analysis_compare": "Membandingkan kandidat dari seluruh video sebelum menyunting",
+    "ranking_rubric_only": "Proses ini memakai kriteria penyuntingan tanpa perbandingan oleh model.",
+    "ranking_comparative_model": "Model membandingkan semua kandidat yang lolos dari seluruh video.",
+    "ranking_comparative_balanced": "Model membandingkan kelompok yang merata menurut waktu, lalu para finalis. Kandidat lainnya tetap berurutan menurut kriteria.",
+    "ranking_rubric_fallback": "Perbandingan oleh model tidak selesai. Kandidat diurutkan hanya menurut kriteria penyuntingan."
   },
   "es": {
     "播放成片": "Reproducir vídeo exportado",
@@ -1589,7 +1661,7 @@
     "analysis_range": "Escribe un intervalo válido (segundos o mm:ss, al menos 18 s).",
     "analysis_model_missing": "Modelo local no disponible. No se usó la nube.",
     "one_click_generate": "Generar vistas previas con un clic",
-    "one_click_help": "Lee toda la transcripción y entiende el hilo antes de seleccionar. Abre el clip para ver por qué se eligió y cómo se editó.",
+    "one_click_help": "Lee toda la transcripción y entiende el hilo antes de seleccionar. Abre el clip para ver por qué se eligió y cómo se editó. Los candidatos de todo el vídeo se comparan antes de editar los clips seleccionados.",
     "one_click_candidates": "Clips utilizables",
     "one_click_seek": "Posición de la vista previa",
     "one_click_manual": "Editar intervalos y borrador manualmente",
@@ -1648,6 +1720,12 @@
     "analysis_body_review": "Revisando el cuerpo tras acortar las pausas",
     "cue_units": "subtítulos",
     "empty_transcript": "No hay subtítulos coincidentes.",
-    "save_manual_before_caption": "Guarda el borrador antes de cambiar los subtítulos."
+    "save_manual_before_caption": "Guarda el borrador antes de cambiar los subtítulos.",
+    "selection_unverified": "Se leyó toda la transcripción, pero el modelo no dio ubicaciones verificables en el original para sus propuestas. No se pudo determinar el número de clips utilizables; eso no significa que no haya clips aprovechables. Intenta generar de nuevo.",
+    "analysis_compare": "Comparando candidatos de todo el vídeo antes de editar",
+    "ranking_rubric_only": "En esta ejecución se aplicaron los criterios editoriales sin comparación por el modelo.",
+    "ranking_comparative_model": "El modelo comparó todos los candidatos de todo el vídeo que superaron la selección inicial.",
+    "ranking_comparative_balanced": "El modelo comparó grupos equilibrados en el tiempo y después a los finalistas. Los demás conservaron el orden por criterios.",
+    "ranking_rubric_fallback": "La comparación por el modelo no se completó. Solo se usaron los criterios editoriales para ordenar los candidatos."
   }
 }
