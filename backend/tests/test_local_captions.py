@@ -524,3 +524,30 @@ def test_glossary_inbox_is_opt_in_and_does_not_edit_subtitles(workspace,project)
         assert res.status_code==200 and len(res.json()['changes'])==1
         assert cli.get(url+'/glossary').json()['terms']=='第一段 => 一段测试'
         assert workspace.load(project['id'])['subtitle_sha256']==project['subtitle_sha256']
+
+
+@pytest.mark.skipif(sys.platform != 'darwin', reason='verified local character converter is macOS only')
+def test_animated_claim_and_simplified_captions_use_approved_plan(workspace, project):
+    from backend.utils.ffmpeg_utils import get_ffmpeg_path
+    from backend.services.local_emphasis import simplified
+    revised = workspace.edit_captions(project['id'], project['revision'],
+                                      [{'id':'c00001','text':'團隊發現這個問題'}])
+    original = revised['cues'][0]['text']
+    d = workspace.plan(project['id'],revised['revision'],{'subtitles':True,'local_simplified':True,'scenes':[
+        {'id':'wide','start':0,'end':4},
+        {'id':'focus','start':0,'end':4,'emphasis':[1,2.6],'punch':1.48,'focus_x':.8}]})
+    t = caption_track(d['cues'],d['draft'],d['info'])
+    assert all(v['text']==simplified(original)=='团队发现这个问题' for v in t['output'])
+    job=workspace.start_job(d['id'],'render',plan_hash=d['plan_hash'],approved=True)
+    assert wait_job(workspace,d['id'],job['id'])['status']=='completed'
+    v=workspace.download(d['id'],job['id'],'video')
+    def diff(t):
+        def pixels(at):
+            return subprocess.check_output([get_ffmpeg_path(),'-v','error','-ss',str(at),'-i',str(v),
+                '-frames:v','1','-vf','crop=iw:ih/2:0:0,scale=80:40,format=gray','-f','rawvideo','-'])
+        a,b=pixels(t),pixels(t+4)
+        assert len(a)==len(b)==3200
+        return sum(abs(x-y) for x,y in zip(a,b))/len(a)
+    assert diff(1.75)>max(diff(.25),diff(3.5))+6
+    assert '团队发现这个问题' in workspace.download(d['id'],job['id'],'subtitles').read_text()
+    assert workspace.load(d['id'])['cues'][0]['text']==original

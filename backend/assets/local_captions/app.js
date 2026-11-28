@@ -161,13 +161,18 @@ function updateFraming(v, scene, apply, editable) {
   controls.hidden = !editable;
   if (!v.videoWidth || !v.videoHeight || !stage.clientWidth) return;
   const fit = Math.min(stage.clientWidth/v.videoWidth, stage.clientHeight/v.videoHeight);
-  const key = [scene?.id, stage.clientWidth, stage.clientHeight, v.videoWidth, v.videoHeight, apply, scene?.punch, scene?.focus_x, scene?.focus_y].join(':');
+  let z = apply ? scene?.punch || 1 : 1;
+  if (apply && scene?.emphasis) {
+    const [a,b]=scene.emphasis, at=v.currentTime;
+    z=1+(z-1)*Math.max(0,Math.min(1,(at-a)/.32,(b+.32-at)/.32));
+  }
+  const key = [z.toFixed(4),scene?.id, stage.clientWidth, stage.clientHeight, v.videoWidth, v.videoHeight, apply, scene?.punch, scene?.focus_x, scene?.focus_y].join(':');
   if (picture.dataset.key === key) return;
   picture.dataset.key = key;
   picture.style.width = v.videoWidth*fit+'px'; picture.style.height = v.videoHeight*fit+'px';
-  const z = apply ? scene?.punch || 1 : 1, x=scene?.focus_x ?? .5, y=scene?.focus_y ?? .5;
+  const x=scene?.focus_x ?? .5, y=scene?.focus_y ?? .5;
   v.style.transformOrigin = x*100+'% '+y*100+'%'; v.style.transform = 'scale('+z+')';
-  $('punch').value = z; $('punchValue').textContent = z.toFixed(2);
+  $('punch').value = scene?.punch || 1; $('punchValue').textContent = z.toFixed(2);
   $('focusX').value=x; $('focusY').value=y;
 }
 function updateCaption() {
@@ -201,7 +206,7 @@ function tick() {
   updateCaption(); requestAnimationFrame(tick);
 }
 function persistDraft(pid, revision, draft) {
-  const payload = { revision, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段', punch:s.punch ?? 1, focus_x:s.focus_x ?? .5, focus_y:s.focus_y ?? .5 })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
+  const payload = { revision, local_simplified:draft.local_simplified ?? true, scenes: draft.scenes.map(s => ({ id: s.id, start: s.start, end: s.end, label: s.label || '片段', emphasis:s.emphasis || null, punch:s.punch ?? 1, focus_x:s.focus_x ?? .5, focus_y:s.focus_y ?? .5 })), aspect: draft.aspect, subtitle_style: draft.subtitle_style, subtitles: draft.subtitles };
   return api(`/api/projects/${pid}/plan`, payload);
 }
 async function savePlan() {
@@ -375,6 +380,10 @@ async function loadDetail(jobId, chapterId) {
     $('detailStatus').textContent = '';
     $('detailContent').hidden = $('clipStudio').hidden = $('clipAudit').hidden = $('previewDisclaimer').hidden = false;
     drawDetail(); showPlan(activePreview.draft);
+    if (params.get('play') === '1') {
+      $('stage').scrollIntoView({block:'center'});
+      $('video').play().catch(() => $('play').focus({preventScroll:true}));
+    }
   } catch (error) {
     if (keep()) throw error.message === 'not_found' ? new Error('revision_conflict') : error;
   } finally {

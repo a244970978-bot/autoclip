@@ -110,10 +110,20 @@ def polish_report(report, cues, measure, call, frame, progress):
     for n,c in enumerate(eligible):
         progress(n,len(eligible),'polish')
         item = refine_clip(c,cues,ids,quiet,call)
-        # Punch in on the opening shot only, return to wide at the next edit.
+        # The claim is source-grounded. Frame it only when there is room to
+        # return wide within the same retained shot; never zoom an arbitrary intro.
         if item['second_pass']['passed']:
-            s = item['scenes'][0]
-            item['scenes'] = [dict(s, **frame(s)), *item['scenes'][1:]]
+            proof = item['selection']['evidence']['claim']
+            a, b = (proof.get(k) for k in ('start','end'))
+            if isinstance(a,(int,float)) and isinstance(b,(int,float)) and b-a >= 1.2:
+                for idx, shot in enumerate(item['scenes']):
+                    if shot['start'] <= a and b+.32 <= shot['end']:
+                        framing = frame({'start':a, 'end':b})
+                        if framing:
+                            shots = list(item['scenes'])
+                            shots[idx] = dict(shot, **framing, emphasis=[a,b])
+                            item['scenes'] = shots
+                        break
         revised[c['id']] = item
     results = [revised.get(c['id'],c) for c in report['chapters']]
     ok = [c['id'] for c in results if c.get('second_pass',{}).get('passed') is True]

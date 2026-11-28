@@ -6,6 +6,7 @@ import json
 import os
 import re
 import tempfile
+import sys
 
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
@@ -27,6 +28,7 @@ class Plan(BaseModel):
     model_config = ConfigDict(extra='forbid')
     revision: int = Field(ge=1)
     scenes: list[dict] = Field(min_length=1, max_length=30)
+    local_simplified: bool = sys.platform == 'darwin'
     aspect: str = 'original'
     subtitle_style: str = 'clean'
     subtitles: bool = True

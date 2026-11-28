@@ -235,6 +235,10 @@ def render_draft(project_id, video, draft: Draft, job_id, progress, *, brand_out
     # Only transmit the subtitle rows used by this draft, never unrelated transcript text.
     from backend.pipeline.quality import to_seconds
     entries = [e.copy() for e in entries if any(to_seconds(e['start_time']) < s.end and to_seconds(e['end_time']) > s.start for s in draft.scenes)]
+    if draft.local_simplified:
+        from backend.services.local_emphasis import simplified
+        for e in entries:
+            e['text'] = simplified(e['text'])
     hook = '' if packaged else draft.hook
     if draft.language != 'source' and (hook or entries) and _needs_translation(draft.language, hook, entries):
         hook = _translate_hook_and_cues(draft.language, hook, entries, warnings)
@@ -458,6 +462,12 @@ def _encode_draft(
                             z, x, y = scene.punch, scene.focus_x, scene.focus_y
                             punch = (f'[0:v]scale=2*trunc(iw*{z}/2):2*trunc(ih*{z}/2),'
                                      f'crop=2*round(iw/{z}/2):2*round(ih/{z}/2):(iw-ow)*{x}:(ih-oh)*{y},setsar=1')
+                            if scene.emphasis:
+                                from backend.services.local_emphasis import animated_filter
+                                size = (int(info['width']), int(info['height']))
+                                if info.get('rotation', 0) % 180 == 90:
+                                    size = size[::-1]
+                                punch = animated_filter(scene, *size)
                             if graph:
                                 graph = graph.replace('[0:v]', punch + ',', 1)
                             else:

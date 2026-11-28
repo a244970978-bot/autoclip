@@ -81,6 +81,10 @@ def caption_track(cues, draft: dict, source_info: dict) -> dict:
     entries = [{'start_time': str(pysrt.SubRipTime(milliseconds=round(c['start'] * 1000))),
                 'end_time': str(pysrt.SubRipTime(milliseconds=round(c['end'] * 1000))), 'text': c['text']}
                for c in cues]
+    if d.local_simplified:
+        from backend.services.local_emphasis import simplified
+        entries = [dict(e,text=simplified(c['text'])) for e,c in zip(entries,cues)
+                   if any(s.start < c['end'] and c['start'] < s.end for s in d.scenes)]
     output, source = [], []
     for i, ((start, end, offset), scene) in enumerate(zip(timeline(d.scenes), d.scenes)):
         length = scene_duration(scene)
@@ -553,11 +557,11 @@ class CaptionWorkspace:
                     or any(role not in ('body', 'close') for role in roles[first_body:])):
                 return None
             scenes = [{'id': s['id'], 'start': s['start'], 'end': s['end'],
-                       **{k:s[k] for k in ('punch','focus_x','focus_y') if k in s},
+                       **{k:s[k] for k in ('punch','focus_x','focus_y','emphasis') if k in s},
                        'label': 'smart-' + ('body' if s['role'] == 'close' and i < len(pieces) - 1 else s['role'])}
                       for i, s in enumerate(pieces)]
             d = Draft(id='captions', title='AutoClip', scenes=scenes, subtitles=True,
-                      aspect=data['draft']['aspect'], subtitle_style=data['draft']['subtitle_style'])
+                      local_simplified=sys.platform == 'darwin', aspect=data['draft']['aspect'], subtitle_style=data['draft']['subtitle_style'])
             duration = data['info']['duration']
             validate_scenes(d.scenes, duration)
             timeline = sorted(d.scenes, key=lambda s: s.start)
@@ -605,6 +609,9 @@ class CaptionWorkspace:
                 chapter = next((c for c in report['chapters'] if isinstance(c, dict) and c.get('id') == cid), None)
                 draft = self._preview_draft(data, report, chapter)
                 if draft is not None:
+                    from backend.services.local_emphasis import apply_emphasis
+                    sidecar = self.path(pid) / 'metadata' / ('job-'+jid) / ('emphasis-'+chapter['id']+'.json')
+                    draft = apply_emphasis(sidecar, data, jid, chapter, draft)
                     return {'draft': draft, 'track': caption_track(data['cues'], draft, data['info']),
                             'revision': data['revision'], 'job_id': jid, 'chapter_id': cid}
             raise CaptionError('not_found')

@@ -39,6 +39,7 @@ class CropPoint(BaseModel):
 
 
 class Scene(BaseModel):
+    emphasis: tuple[float, float] | None = None
     punch: float = Field(default=1, ge=1, le=1.6)
     focus_x: float = Field(default=.5, ge=0, le=1)
     focus_y: float = Field(default=.5, ge=0, le=1)
@@ -62,6 +63,8 @@ class Scene(BaseModel):
 
     @model_validator(mode='after')
     def interval(self):
+        if self.emphasis is not None and not self.start <= self.emphasis[0] < self.emphasis[1] <= self.end:
+            raise ValueError('Emphasis must be inside its source shot')
         if self.end - self.start < .1:
             raise UserFacingError('片段至少需要 0.1 秒')
         return self
@@ -223,6 +226,7 @@ class Draft(BaseModel):
     title_y: float = Field(default=.12, ge=.06, le=.70, allow_inf_nan=False)
     title_accent: str | None = Field(default=None, pattern=r'^#[0-9a-fA-F]{6}$')
     subtitles: bool = True
+    local_simplified: bool = False
     subtitle_style: Literal['clean', 'bold', 'box', 'accent'] = 'clean'
     original_audio: bool = True
     revision: int = Field(default=1, ge=1)
